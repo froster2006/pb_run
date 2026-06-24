@@ -26,8 +26,8 @@ function trimZeroNum(str){
     return String(Number(str.trim()));
 }
 
-function parsePbText(text){
-    let map = {};
+function parsePbEntries(text){
+    let entries = [];
     text.split('\n').forEach(line => {
         let trimmed = line.trim();
         if(!trimmed) return;
@@ -36,8 +36,16 @@ function parsePbText(text){
         let pb = parts.pop();
         let id = parts.join(' ').trim();
         if(id && pb){
-            map[id] = pb;
+            entries.push({ id, pb });
         }
+    });
+    return entries;
+}
+
+function buildPbMap(entries){
+    let map = {};
+    entries.forEach(entry => {
+        map[entry.id] = entry.pb;
     });
     return map;
 }
@@ -89,7 +97,8 @@ function makeTable(){
     let str3 = document.getElementById('text3').value.trim();
     let arr1 = str1.split('\n').filter(x => x.trim() !== '');
     let arr2 = str2.split('\n').filter(x => x.trim() !== '');
-    let pbMap = parsePbText(str3);
+    let pbEntries = parsePbEntries(str3);
+    let pbMap = buildPbMap(pbEntries);
 
     let rankToId = {};
     let unmatchedIds = [];
@@ -181,6 +190,38 @@ function exportExcel(){
     const ws = XLSX.utils.aoa_to_sheet(sheetData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, '本周成绩');
+
+    let pbEntries = parsePbEntries(document.getElementById('text3').value.trim());
+    let pbMap = buildPbMap(pbEntries);
+
+    let updatedPbMap = { ...pbMap };
+    let newIds = [];
+    tableData.forEach(item => {
+        if(!item.id || !item.time) return;
+        let currentMs = parseDuration(item.time);
+        let oldPb = updatedPbMap[item.id];
+        let oldPbMs = oldPb ? parseDuration(oldPb) : NaN;
+
+        if(!oldPb || (!Number.isNaN(currentMs) && !Number.isNaN(oldPbMs) && currentMs < oldPbMs)){
+            updatedPbMap[item.id] = item.time;
+        }
+        if(!pbMap[item.id] && !newIds.includes(item.id)){
+            newIds.push(item.id);
+        }
+    });
+
+    let updatedPbRows = pbEntries.map(entry => [entry.id, updatedPbMap[entry.id] || entry.pb]);
+    newIds.forEach(id => {
+        updatedPbRows.push([id, updatedPbMap[id]]);
+    });
+
+    let sheetData2 = [
+        ['ID','PB'],
+        ...updatedPbRows
+    ];
+    const ws2 = XLSX.utils.aoa_to_sheet(sheetData2);
+    XLSX.utils.book_append_sheet(wb, ws2, '更新PB');
+
     const dateValue = document.getElementById('dateInput')?.value || 'date';
     XLSX.writeFile(wb, `PBRun-${dateValue}.xlsx`);
 }
