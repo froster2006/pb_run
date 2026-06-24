@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PB Run 本周成绩</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h2>PB Run 本周成绩</h2>
+        <div class="date-row">
+            <label for="dateInput">日期</label>
+            <input id="dateInput" type="date">
+        </div>
+
+
+        <div class="box-item">
+            <label>数据1：ID与名次交替行</label>
+            <textarea id="text1" placeholder="示例：
+玩家A
+1
+玩家B
+2"></textarea>
+        </div>
+
+        <div class="box-item">
+            <label>数据2：单行 名次 时间 diff</label>
+            <textarea id="text2" placeholder="示例：
+01 15:20 +00:05
+02 16:10 -00:03"></textarea>
+        </div>
+
+        <div class="btn-wrap">
+            <button class="btn-generate" onclick="makeTable()">生成表格</button>
+            <button class="btn-export" onclick="exportExcel()">导出Excel</button>
+        </div>
+        <div class="table-title" id="tableHeader"></div>
+        <table id="resultTable">
+            <thead>
+                <tr>
+                    <th>名次</th>
+                    <th>ID</th>
+                    <th>用时</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    <script src="script.js"></script>
+</body>
+</html>

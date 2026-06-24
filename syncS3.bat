@@ -1,0 +1,1 @@
+aws s3 sync .\ s3://pb-run --exclude ".git/*" --profile sls
