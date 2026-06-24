@@ -1,5 +1,4 @@
 let tableData = [];
-let pbMap = {};
 
 // 解析 MM:SS 或 MM:SS.xx 为毫秒
 function parseDuration(timeString){
@@ -25,6 +24,22 @@ function parseDuration(timeString){
 
 function trimZeroNum(str){
     return String(Number(str.trim()));
+}
+
+function parsePbText(text){
+    let map = {};
+    text.split('\n').forEach(line => {
+        let trimmed = line.trim();
+        if(!trimmed) return;
+        let parts = trimmed.split(/\s+/);
+        if(parts.length < 2) return;
+        let pb = parts.pop();
+        let id = parts.join(' ').trim();
+        if(id && pb){
+            map[id] = pb;
+        }
+    });
+    return map;
 }
 
 function getCurrentDateValue(){
@@ -71,15 +86,26 @@ function loadPbData(){
 function makeTable(){
     let str1 = document.getElementById('text1').value.trim();
     let str2 = document.getElementById('text2').value.trim();
+    let str3 = document.getElementById('text3').value.trim();
     let arr1 = str1.split('\n').filter(x => x.trim() !== '');
     let arr2 = str2.split('\n').filter(x => x.trim() !== '');
+    let pbMap = parsePbText(str3);
 
     let rankToId = {};
+    let unmatchedIds = [];
     for(let i = 0; i < arr1.length; i += 2){
         let id = arr1[i].trim();
         let rankRaw = arr1[i+1] ? arr1[i+1].trim() : '';
-        let rank = trimZeroNum(rankRaw);
-        if(rank) rankToId[rank] = id;
+        if(rankRaw){
+            let rank = trimZeroNum(rankRaw);
+            if(rank) {
+                rankToId[rank] = id;
+            } else {
+                unmatchedIds.push(id);
+            }
+        } else {
+            unmatchedIds.push(id);
+        }
     }
 
     let rankToTime = {};
@@ -89,18 +115,21 @@ function makeTable(){
             let rawRank = parts[0];
             let realRank = trimZeroNum(rawRank);
             let time = parts[1];
-            rankToTime[realRank] = time;
+            if(realRank) {
+                rankToTime[realRank] = time;
+            }
         }
     });
 
+    let allRanks = new Set([...Object.keys(rankToId), ...Object.keys(rankToTime)]);
     tableData = [];
-    for(let r in rankToId){
-        let id = rankToId[r];
-        let time = rankToTime[r] || '无记录';
+    Array.from(allRanks).sort((a,b) => Number(a) - Number(b)).forEach(r => {
+        let id = rankToId[r] || '';
+        let time = rankToTime[r] || '';
         let isPb = false;
         let pbLabel = '';
 
-        if(time !== '无记录' && pbMap[id]){
+        if(time && id && pbMap[id]){
             let currentMs = parseDuration(time);
             let pbMs = parseDuration(pbMap[id]);
             if(!Number.isNaN(currentMs) && !Number.isNaN(pbMs) && currentMs < pbMs){
@@ -116,9 +145,17 @@ function makeTable(){
             pbLabel,
             isPb
         });
-    }
+    });
 
-    tableData.sort((a,b) => Number(a.rank) - Number(b.rank));
+    unmatchedIds.forEach(id => {
+        tableData.push({
+            rank: '',
+            id,
+            time: '',
+            pbLabel: '',
+            isPb: false
+        });
+    });
 
     let tbody = document.getElementById('tableBody');
     tbody.innerHTML = '';
@@ -149,4 +186,3 @@ function exportExcel(){
 }
 
 initDateInput();
-loadPbData();
