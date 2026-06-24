@@ -8,12 +8,13 @@
 body {
     background: linear-gradient(145deg, #0F172A, #1E40AF, #DC2626);
     min-height: 100vh;
-    padding: 16px 12px;
+    padding: 24px 20px;
 }
 
 .container {
     width: 100%;
-    max-width: 100%;
+    max-width: 980px;
+    margin: 0 auto;
 }
 
 h2 {
@@ -159,13 +160,25 @@ tr:nth-child(even) td {
 /* PB行改为亮绿色系 */
 .pb-row td {
     background: #22e072 !important;
-    color: #004d1a !important;
+    color: #9b1267 !important;
     font-weight: 900 !important;
     font-size: 15.5px !important;
 }
 
 .pb-row {
     box-shadow: 0 2px 8px rgba(34, 224, 114, 0.35);
+}
+
+/* New! 行高亮 */
+.new-row td {
+    background: #ECFCCB !important;
+    color: #92400E !important;
+    font-weight: 900 !important;
+    font-size: 15.5px !important;
+}
+
+.new-row {
+    box-shadow: 0 2px 8px rgba(216, 180, 56, 0.25);
 }
 
 .tip{

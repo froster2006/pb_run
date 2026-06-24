@@ -103,16 +103,30 @@ function makeTable(){
     let rankToId = {};
     let unmatchedIds = [];
     for(let i = 0; i < arr1.length; i += 2){
-        let id = arr1[i].trim();
-        let rankRaw = arr1[i+1] ? arr1[i+1].trim() : '';
-        if(rankRaw){
-            let rank = trimZeroNum(rankRaw);
-            if(rank) {
-                rankToId[rank] = id;
-            } else {
-                unmatchedIds.push(id);
-            }
+        let first = arr1[i].trim();
+        let second = arr1[i+1] ? arr1[i+1].trim() : '';
+        let rank = '';
+        let id = '';
+        let firstIsNum = /^\d+$/.test(first);
+        let secondIsNum = /^\d+$/.test(second);
+
+        if(firstIsNum && !secondIsNum){
+            rank = trimZeroNum(first);
+            id = second;
+        } else if(!firstIsNum && secondIsNum){
+            rank = trimZeroNum(second);
+            id = first;
+        } else if(!firstIsNum && !secondIsNum){
+            rank = trimZeroNum(second);
+            id = first;
         } else {
+            rank = trimZeroNum(first);
+            id = second;
+        }
+
+        if(rank){
+            rankToId[rank] = id;
+        } else if(id){
             unmatchedIds.push(id);
         }
     }
@@ -138,12 +152,16 @@ function makeTable(){
         let isPb = false;
         let pbLabel = '';
 
-        if(time && id && pbMap[id]){
-            let currentMs = parseDuration(time);
-            let pbMs = parseDuration(pbMap[id]);
-            if(!Number.isNaN(currentMs) && !Number.isNaN(pbMs) && currentMs < pbMs){
-                isPb = true;
-                pbLabel = 'PB';
+        if(time && id){
+            if(pbMap[id]){
+                let currentMs = parseDuration(time);
+                let pbMs = parseDuration(pbMap[id]);
+                if(!Number.isNaN(currentMs) && !Number.isNaN(pbMs) && currentMs < pbMs){
+                    isPb = true;
+                    pbLabel = 'PB!';
+                }
+            } else {
+                pbLabel = 'New!';
             }
         }
 
@@ -172,6 +190,9 @@ function makeTable(){
         let tr = document.createElement('tr');
         if(item.isPb){
             tr.classList.add('pb-row');
+        }
+        if(item.pbLabel === 'New!'){
+            tr.classList.add('new-row');
         }
         tr.innerHTML = `<td>${item.rank}</td><td>${item.id}</td><td>${item.time}</td><td>${item.pbLabel}</td>`;
         tbody.appendChild(tr);
