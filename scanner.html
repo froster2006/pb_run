@@ -2,8 +2,8 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>连续扫码器</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>带取景框连续扫码</title>
     <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/zxing-browser.min.js"></script>
     <style>
         *{margin:0;padding:0;box-sizing:border-box;}
@@ -15,11 +15,32 @@
         }
         #scanBtn{
             width:100%;height:52px;background:#1677ff;color:#fff;
-            border:none;border-radius:10px;font-size:17px;font-weight:500;
+            border:none;border-radius:10px;font-size:17px;
         }
         #scanBtn:active{background:#0f5fcc;}
-        #videoBox{width:100%;margin-top:20px;display:none;}
-        video{width:100%;border-radius:10px;background:#000;object-fit:cover;}
+        .video-wrap{
+            width:100%;margin-top:20px;position:relative;display:none;
+        }
+        video{
+            width:100%;border-radius:10px;background:#000;object-fit:cover;
+        }
+        /* 绿色扫码聚焦框 */
+        .scan-box{
+            position:absolute;
+            left:50%;top:50%;
+            width:220px;height:220px;
+            transform:translate(-50%,-50%);
+            border:2px solid #00e676;
+            box-shadow:0 0 0 9999px rgba(0,0,0,0.5);
+            border-radius:6px;
+        }
+        .scan-box::before{
+            content:'';position:absolute;left:0;top:0;width:100%;height:3px;
+            background:#00e676;animation:scanLine 1.5s infinite linear;
+        }
+        @keyframes scanLine{
+            0%{top:0;}100%{top:calc(100% - 3px);}
+        }
         .warn-tip{
             color:#e53e3e;margin-top:16px;line-height:1.7;
             font-size:14px;display:none;padding:14px;background:#fff2f2;border-radius:8px;
@@ -27,89 +48,93 @@
     </style>
 </head>
 <body>
-    <textarea id="resultInput" placeholder="扫码结果自动逐行排列..."></textarea>
+    <textarea id="resultInput" placeholder="确认后的扫码内容逐行显示在这里..."></textarea>
     <button id="scanBtn">开启连续扫码</button>
-    <div id="videoBox">
+
+    <div class="video-wrap" id="videoWrap">
         <video id="video" autoplay playsinline muted></video>
+        <div class="scan-box"></div>
     </div>
+
     <div class="warn-tip" id="tipBox"></div>
 
 <script>
 const video = document.getElementById('video');
 const scanBtn = document.getElementById('scanBtn');
 const resultInput = document.getElementById('resultInput');
-const videoBox = document.getElementById('videoBox');
+const videoWrap = document.getElementById('videoWrap');
 const tipBox = document.getElementById('tipBox');
 
 let codeReader = null;
 let isRunning = false;
-let lastScanText = '';
-const delayTime = 1000;
+let lastCode = '';
+const coolTime = 1200;
 
-function closeCameraAll(){
+// 彻底关闭摄像头
+function stopAllCamera(){
     if(codeReader){
         codeReader.reset();
         codeReader = null;
     }
     if(video.srcObject){
-        video.srcObject.getTracks.forEach(track=>track.stop());
+        video.srcObject.getTracks().forEach(t=>t.stop());
         video.srcObject = null;
     }
     isRunning = false;
-    videoBox.style.display = 'none';
+    videoWrap.style.display = 'none';
     scanBtn.innerText = '开启连续扫码';
 }
 
-scanBtn.addEventListener('click', async function(){
+scanBtn.addEventListener('click',async ()=>{
     tipBox.style.display = 'none';
     if(isRunning){
-        closeCameraAll();
+        stopAllCamera();
         return;
     }
 
-    try {
+    try{
         isRunning = true;
         scanBtn.innerText = '停止扫码';
-        videoBox.style.display = 'block';
+        videoWrap.style.display = 'block';
 
-        // 强制指定后置摄像头 解决Firefox调用失败
+        // 相机配置
         const constraints = {
-            video: {
-                facingMode: { exact: "environment" },
-                width: {ideal:640},
-                height:{ideal:480}
+            video:{
+                facingMode:'environment',
+                width:{ideal:720},
+                height:{ideal:960}
             }
         };
-
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
         video.srcObject = stream;
 
+        // 初始化识别器
         codeReader = new ZXing.BrowserMultiFormatReader();
-        codeReader.decodeFromVideoElement(video, (res, err)=>{
+        codeReader.decodeFromVideoElement(video,(res,err)=>{
             if(res){
-                let txt = res.text.trim();
-                if(txt && txt !== lastScanText){
-                    lastScanText = txt;
-                    resultInput.value += txt + '\n';
-                    resultInput.scrollTop = resultInput.scrollHeight;
-                    setTimeout(()=>lastScanText='', delayTime);
-                }
-            }
-            if(err && !(err.name === 'NotFoundException')){}
-        })
+                let codeVal = res.text.trim();
+                if(!codeVal || codeVal === lastCode) return;
+                lastCode = codeVal;
 
-    } catch (error) {
-        closeCameraAll();
-        let tips = '';
-        // 精准匹配iOS Firefox所有权限错误
-        if(error.name === 'OverconstrainedError' || error.name === 'NotAllowedError'){
-            tips = '🔴 iOS Firefox 必做设置：\n1.手机设置 → 隐私与安全性 → 相机 → 打开Firefox权限\n2.当前页面点顶部地址栏左侧🔒权限图标\n3.找到相机权限 设置为【允许】\n4.关闭无痕浏览模式后重试\n5.HTTP本地页面必须手动放行相机';
-        }else if(error.name === 'NotFoundError'){
-            tips = '未找到后置摄像头，切换设备重试';
+                // 弹出对话框确认
+                let confirmTxt = confirm(`识别成功！\n内容：${codeVal}\n\n点击确定添加到列表`);
+                if(confirmTxt){
+                    resultInput.value += codeVal + '\n';
+                    resultInput.scrollTop = resultInput.scrollHeight;
+                }
+                setTimeout(()=>lastCode='',coolTime);
+            }
+            if(err && !(err instanceof ZXing.NotFoundException)){}
+        })
+    }catch(err){
+        stopAllCamera();
+        let msg = '';
+        if(err.name === 'NotAllowedError' || err.name === 'OverconstrainedError'){
+            msg = 'iOS Firefox设置：\n1.关闭无痕模式\n2.设置开启Firefox相机权限\n3.网页锁图标打开相机权限';
         }else{
-            tips = '浏览器禁止调用摄像头，请手动开放站点相机权限';
+            msg = '摄像头调用失败，请检查权限';
         }
-        tipBox.innerText = tips;
+        tipBox.innerText = msg;
         tipBox.style.display = 'block';
     }
 })
