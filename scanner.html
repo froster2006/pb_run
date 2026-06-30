@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>带取景框连续扫码</title>
+    <title>iOS Firefox 稳定扫码</title>
     <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/zxing-browser.min.js"></script>
     <style>
         *{margin:0;padding:0;box-sizing:border-box;}
@@ -22,17 +22,17 @@
             width:100%;margin-top:20px;position:relative;display:none;
         }
         video{
-            width:100%;border-radius:10px;background:#000;object-fit:cover;
+            width:100%;border-radius:10px;background:#000;
+            object-fit:cover;
         }
-        /* 绿色扫码聚焦框 */
+        /* 绿色聚焦框 */
         .scan-box{
-            position:absolute;
-            left:50%;top:50%;
-            width:220px;height:220px;
+            position:absolute;left:50%;top:50%;
+            width:240px;height:240px;
             transform:translate(-50%,-50%);
             border:2px solid #00e676;
             box-shadow:0 0 0 9999px rgba(0,0,0,0.5);
-            border-radius:6px;
+            border-radius:8px;
         }
         .scan-box::before{
             content:'';position:absolute;left:0;top:0;width:100%;height:3px;
@@ -48,7 +48,7 @@
     </style>
 </head>
 <body>
-    <textarea id="resultInput" placeholder="确认后的扫码内容逐行显示在这里..."></textarea>
+    <textarea id="resultInput" placeholder="扫码结果（每行一个）"></textarea>
     <button id="scanBtn">开启连续扫码</button>
 
     <div class="video-wrap" id="videoWrap">
@@ -70,7 +70,6 @@ let isRunning = false;
 let lastCode = '';
 const coolTime = 1200;
 
-// 彻底关闭摄像头
 function stopAllCamera(){
     if(codeReader){
         codeReader.reset();
@@ -85,7 +84,7 @@ function stopAllCamera(){
     scanBtn.innerText = '开启连续扫码';
 }
 
-scanBtn.addEventListener('click',async ()=>{
+scanBtn.addEventListener('click', async ()=>{
     tipBox.style.display = 'none';
     if(isRunning){
         stopAllCamera();
@@ -97,42 +96,45 @@ scanBtn.addEventListener('click',async ()=>{
         scanBtn.innerText = '停止扫码';
         videoWrap.style.display = 'block';
 
-        // 相机配置
+        // 兼容 iOS Firefox 的相机配置
         const constraints = {
             video:{
                 facingMode:'environment',
-                width:{ideal:720},
-                height:{ideal:960}
+                width:{ideal:480},
+                height:{ideal:640}
             }
         };
+
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
         video.srcObject = stream;
 
-        // 初始化识别器
         codeReader = new ZXing.BrowserMultiFormatReader();
-        codeReader.decodeFromVideoElement(video,(res,err)=>{
+        codeReader.decodeFromVideoElement(video, (res, err)=>{
             if(res){
                 let codeVal = res.text.trim();
                 if(!codeVal || codeVal === lastCode) return;
                 lastCode = codeVal;
 
-                // 弹出对话框确认
-                let confirmTxt = confirm(`识别成功！\n内容：${codeVal}\n\n点击确定添加到列表`);
-                if(confirmTxt){
+                // 弹窗确认
+                if(confirm(`扫描到：\n${codeVal}\n\n确定添加？`)){
                     resultInput.value += codeVal + '\n';
                     resultInput.scrollTop = resultInput.scrollHeight;
                 }
-                setTimeout(()=>lastCode='',coolTime);
+                setTimeout(()=>lastCode='', coolTime);
             }
             if(err && !(err instanceof ZXing.NotFoundException)){}
         })
+
     }catch(err){
         stopAllCamera();
         let msg = '';
-        if(err.name === 'NotAllowedError' || err.name === 'OverconstrainedError'){
-            msg = 'iOS Firefox设置：\n1.关闭无痕模式\n2.设置开启Firefox相机权限\n3.网页锁图标打开相机权限';
+        console.error(err);
+        if(err.name === 'NotAllowedError'){
+            msg = '❌ 权限被拒绝！请按步骤：\n1.关闭无痕\n2.设置→隐私→相机→允许Firefox\n3.网页锁图标→相机→允许\n4.重启Firefox';
+        }else if(err.name === 'OverconstrainedError'){
+            msg = '❌ 找不到后置摄像头，切换设备';
         }else{
-            msg = '摄像头调用失败，请检查权限';
+            msg = '❌ 无法打开摄像头：' + err.message;
         }
         tipBox.innerText = msg;
         tipBox.style.display = 'block';
