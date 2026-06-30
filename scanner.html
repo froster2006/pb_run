@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
-    <title>稳定连续扫码</title>
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <title>单次扫码器</title>
+    <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/zxing-browser.min.js"></script>
     <style>
         *{margin:0;padding:0;box-sizing:border-box;}
         body{padding:20px;font-family:system-ui,sans-serif;background:#f7f8fa;}
@@ -13,14 +13,14 @@
             border:1px solid #ddd;border-radius:10px;margin-bottom:20px;
             outline:none;resize:none;white-space:pre-wrap;background:#fff;
         }
-        #openScan{
-            width:100%;height:52px;background:#23965e;color:#fff;
+        #scanBtn{
+            width:100%;height:52px;background:#1677ff;color:#fff;
             border:none;border-radius:10px;font-size:17px;
         }
-        #openScan:active{background:#1c7d4e;}
+        #scanBtn:active{background:#0f5fcc;}
         .scanView{width:100%;margin-top:20px;position:relative;display:none;}
         #video{width:100%;border-radius:10px;background:#000;object-fit:cover;}
-        /* 绿色扫描框 */
+        /* 绿色扫描取景框 */
         .focusBox{
             position:absolute;left:50%;top:50%;
             width:230px;height:230px;
@@ -36,105 +36,82 @@
             0%{top:0;}100%{top:calc(100% - 3px);}
         }
         .errTip{color:#d93025;margin-top:15px;font-size:14px;display:none;padding:10px;background:#ffeaea;border-radius:6px;}
-        #canvas{display:none;}
     </style>
 </head>
 <body>
-    <textarea id="resultBox" placeholder="扫码结果自动分行存放"></textarea>
-    <button id="openScan">开启扫码</button>
+    <textarea id="resultBox" placeholder="扫码结果逐行显示在这里"></textarea>
+    <button id="scanBtn">点击开始扫码</button>
 
     <div class="scanView" id="scanView">
         <video id="video" autoplay playsinline muted></video>
         <div class="focusBox"></div>
     </div>
-    <canvas id="canvas"></canvas>
     <div class="errTip" id="errTip"></div>
 
 <script>
 const video = document.getElementById('video');
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
-const btn = document.getElementById('openScan');
+const scanBtn = document.getElementById('scanBtn');
 const resultBox = document.getElementById('resultBox');
 const scanView = document.getElementById('scanView');
 const errTip = document.getElementById('errTip');
 
-let stream = null;
-let scanLoop = null;
-let lockScan = false;
-let lastScanStr = "";
+let codeReader = null;
+let mediaStream = null;
 
-// 关闭所有
-function closeAll(){
-    if(stream){
-        stream.getTracks().forEach(t=>t.stop());
-        stream = null;
+// 关闭摄像头 & 停止识别
+function closeCamera(){
+    if(codeReader){
+        codeReader.reset();
+        codeReader = null;
     }
-    clearInterval(scanLoop);
-    scanView.style.display = "none";
-    btn.innerText = "开启扫码";
-    lockScan = false;
-    lastScanStr = "";
+    if(mediaStream){
+        mediaStream.getTracks().forEach(track=>track.stop());
+        mediaStream = null;
+    }
+    scanView.style.display = 'none';
+    scanBtn.innerText = '点击开始扫码';
 }
 
-btn.addEventListener("click",async ()=>{
-    errTip.style.display = "none";
-    if(stream){
-        closeAll();
-        return;
-    }
+scanBtn.addEventListener('click',async ()=>{
+    errTip.style.display = 'none';
+    if(mediaStream) return;
+
     try{
-        btn.innerText = "停止扫码";
-        scanView.style.display = "block";
-        stream = await navigator.mediaDevices.getUserMedia({
-            video:{facingMode:"environment",width:480}
-        });
-        video.srcObject = stream;
+        scanBtn.innerText = '对准条码扫描';
+        scanView.style.display = 'block';
 
-        scanLoop = setInterval(()=>{
-            if(lockScan) return;
-            if(video.videoWidth <= 10) return;
+        // 调用后置摄像头
+        const constraints = {
+            video: { facingMode: "environment" }
+        };
+        mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = mediaStream;
 
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            ctx.clearRect(0,0,canvas.width,canvas.height);
-            ctx.drawImage(video,0,0);
-            let imgData = ctx.getImageData(0,0,canvas.width,canvas.height);
-            
-            // 先识别二维码
-            let qrRes = jsQR(imgData.data,canvas.width,canvas.height);
-            if(qrRes && qrRes.data){
-                handleCode(qrRes.data);
-                return;
+        // 初始化全能扫码（二维码+一维条码）
+        codeReader = new ZXing.BrowserMultiFormatReader();
+        codeReader.decodeFromVideoElement(video, (result, err) => {
+            if(result){
+                let codeText = result.text.trim();
+                // 弹窗确认
+                let confirmAdd = confirm(`识别成功\n内容：${codeText}\n确定添加？`);
+                if(confirmAdd){
+                    resultBox.value += codeText + '\n';
+                    resultBox.scrollTop = resultBox.scrollHeight;
+                }
+                // 无论确认与否，识别到立刻关闭摄像头
+                closeCamera();
             }
-        },350);
+            // 忽略未找到码的正常报错
+            if(err && !(err instanceof ZXing.NotFoundException)){
+                console.log(err);
+            }
+        })
     }catch(e){
-        closeAll();
-        errTip.innerText = "开启失败：关闭无痕，给Firefox相机权限，网页内允许相机";
-        errTip.style.display = "block";
+        closeCamera();
+        errTip.innerText = '无法打开摄像头，请关闭无痕模式，开启Firefox相机权限';
+        errTip.style.display = 'block';
     }
-});
-
-// 处理扫码结果
-function handleCode(text){
-    if(!text) return;
-    let code = text.trim();
-    if(code === lastScanStr) return;
-    lastScanStr = code;
-    lockScan = true;
-
-    let isOk = confirm(`已识别：\n${code}\n确认加入列表？`);
-    if(isOk){
-        resultBox.value += code + "\n";
-        resultBox.scrollTop = resultBox.scrollHeight;
-    }
-
-    // 强制解锁，放开识别
-    setTimeout(()=>{
-        lockScan = false;
-        lastScanStr = "";
-    },1500);
-}
+})
 </script>
 </body>
 </html>
