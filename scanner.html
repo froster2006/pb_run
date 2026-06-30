@@ -1,123 +1,187 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>扫码器</title>
-    <script src="https://unpkg.com/zxing-wasm@1.6.2/dist/zxing-browser.min.js"></script>
-    <style>
-        *{margin:0;padding:0;box-sizing:border-box;}
-        body{padding:20px;font-family:-apple-system,sans-serif;background:#f7f8fa;}
-        #resultInput{
-            width:100%;height:130px;padding:12px;font-size:16px;
-            border:1px solid #e5e7eb;border-radius:10px;margin-bottom:20px;
-            outline: none;resize:none;white-space:pre-wrap;background:#fff;
-        }
-        #scanBtn{
-            width:100%;height:52px;background:#1677ff;color:#fff;
-            border:none;border-radius:10px;font-size:17px;
-        }
-        #scanBtn:active{background:#0f5fcc;}
-        .video-wrap{
-            width:100%;margin-top:20px;position:relative;display:none;
-        }
-        video{
-            width:100%;border-radius:10px;background:#000;object-fit:cover;
-        }
-        .scan-box{
-            position:absolute;left:50%;top:50%;
-            width:240px;height:240px;
-            transform:translate(-50%,-50%);
-            border:2px solid #00e676;
-            box-shadow:0 0 0 9999px rgba(0,0,0,0.5);
-            border-radius:8px;
-        }
-        .scan-box::before{
-            content:'';position:absolute;left:0;top:0;width:100%;height:3px;
-            background:#00e676;animation:scanLine 1.5s infinite linear;
-        }
-        @keyframes scanLine{
-            0%{top:0;}100%{top:calc(100% - 3px);}
-        }
-        .warn-tip{
-            color:#e53e3e;margin-top:16px;line-height:1.7;
-            font-size:14px;display:none;padding:14px;background:#fff2f2;border-radius:8px;
-        }
-    </style>
-</head>
-<body>
-    <textarea id="resultInput" placeholder="扫码结果每行一条"></textarea>
-    <button id="scanBtn">开启扫码</button>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
 
-    <div class="video-wrap" id="videoWrap">
-        <video id="video" autoplay playsinline muted></video>
-        <div class="scan-box"></div>
-    </div>
+<title>扫码器</title>
 
-    <div class="warn-tip" id="tipBox"></div>
+<script src="https://unpkg.com/html5-qrcode"></script>
 
-<script>
-const video = document.getElementById('video');
-const scanBtn = document.getElementById('scanBtn');
-const resultInput = document.getElementById('resultInput');
-const videoWrap = document.getElementById('videoWrap');
-const tipBox = document.getElementById('tipBox');
-
-let stream = null;
-let scanTimer = null;
-let lastCode = '';
-
-function stopCamera(){
-    if(stream){
-        stream.getTracks().forEach(t=>t.stop());
-        stream = null;
-    }
-    clearInterval(scanTimer);
-    videoWrap.style.display = 'none';
-    scanBtn.innerText = '开启扫码';
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
 }
 
-scanBtn.addEventListener('click',async ()=>{
-    tipBox.style.display = 'none';
-    if(stream){
-        stopCamera();
-        return;
-    }
+body{
+    background:#f5f5f5;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    padding:20px;
+}
+
+textarea{
+    width:100%;
+    height:140px;
+    padding:12px;
+    font-size:16px;
+    border-radius:10px;
+    border:1px solid #ccc;
+    resize:none;
+    margin-bottom:20px;
+    background:white;
+}
+
+button{
+    width:100%;
+    height:52px;
+    border:none;
+    border-radius:10px;
+    background:#1677ff;
+    color:white;
+    font-size:18px;
+}
+
+button:active{
+    background:#005fe0;
+}
+
+#reader{
+    margin-top:20px;
+    display:none;
+}
+
+#reader video{
+    border-radius:10px;
+}
+
+.tip{
+    margin-top:15px;
+    color:#666;
+    text-align:center;
+}
+</style>
+
+</head>
+
+<body>
+
+<textarea id="resultInput" placeholder="扫码结果（每行一条）"></textarea>
+
+<button id="scanBtn">开启扫码</button>
+
+<div id="reader"></div>
+
+<div class="tip">
+支持：
+QR Code、Code128、EAN13、EAN8、UPC、Code39 等
+</div>
+
+<script>
+
+const resultInput=document.getElementById("resultInput");
+const scanBtn=document.getElementById("scanBtn");
+const reader=document.getElementById("reader");
+
+let scanner=null;
+let scanning=false;
+let lastText="";
+
+async function startScanner(){
+
+    reader.style.display="block";
+
+    scanner=new Html5Qrcode("reader");
+
     try{
-        scanBtn.innerText = '停止扫码';
-        videoWrap.style.display = 'block';
-        stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: "environment" }
-        });
-        video.srcObject = stream;
 
-        // 逐帧识别 兼容所有条码+二维码
-        scanTimer = setInterval(()=>{
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            ctx.drawImage(video,0,0);
-            const img = canvas.toDataURL('image/png');
+        await scanner.start(
 
-            ZXing.readBarcodeFromImage(img).then(res=>{
-                if(!res || !res.text) return;
-                let txt = res.text.trim();
-                if(txt === lastCode) return;
-                lastCode = txt;
-                if(confirm(`识别到内容：\n${txt}\n确定添加？`)){
-                    resultInput.value += txt + '\n';
-                    resultInput.scrollTop = resultInput.scrollHeight;
-                }
-                setTimeout(()=>lastCode='',1000);
-            }).catch(e=>{});
-        },400);
+            {
+                facingMode:"environment"
+            },
+
+            {
+                fps:10,
+                qrbox:{
+                    width:250,
+                    height:250
+                },
+                aspectRatio:1.333
+            },
+
+            onScanSuccess,
+
+            ()=>{}
+        );
+
+        scanning=true;
+        scanBtn.innerText="停止扫码";
+
     }catch(e){
-        stopCamera();
-        tipBox.innerText = '无法打开摄像头，请关闭无痕并开启Firefox相机权限';
-        tipBox.style.display = 'block';
+
+        alert("无法打开摄像头\n\n请确认：\n1. HTTPS\n2. 已允许相机权限");
+
+        stopScanner();
+
     }
-})
+
+}
+
+async function stopScanner(){
+
+    if(scanner){
+
+        try{
+            await scanner.stop();
+        }catch(e){}
+
+        try{
+            await scanner.clear();
+        }catch(e){}
+
+        scanner=null;
+    }
+
+    reader.style.display="none";
+    scanning=false;
+    scanBtn.innerText="开启扫码";
+
+}
+
+function onScanSuccess(decodedText){
+
+    if(decodedText===lastText)
+        return;
+
+    lastText=decodedText;
+
+    navigator.vibrate?.(100);
+
+    if(confirm("识别到：\n\n"+decodedText+"\n\n是否添加？")){
+
+        resultInput.value+=decodedText+"\n";
+        resultInput.scrollTop=resultInput.scrollHeight;
+
+    }
+
+    setTimeout(()=>{
+        lastText="";
+    },1000);
+
+}
+
+scanBtn.onclick=()=>{
+
+    if(scanning)
+        stopScanner();
+    else
+        startScanner();
+
+};
+
 </script>
+
 </body>
 </html>
