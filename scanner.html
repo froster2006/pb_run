@@ -26,16 +26,24 @@ const err = document.getElementById('err');
 async function startScan() {
     err.innerText = '';
     v.style.display = 'block';
+    v.autoplay = true;
+    v.playsInline = true;
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        err.innerText = '❌ 浏览器不支持摄像头访问。请使用支持 HTTPS/localhost 的现代浏览器。';
+        stopScan();
+        return;
+    }
 
     codeReader = new ZXing.BrowserMultiFormatReader();
 
     try {
         scanning = true;
 
-        const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
-        const deviceId = devices.length ? devices[devices.length - 1].deviceId : null;
+        const devices = await codeReader.listVideoInputDevices();
+        const deviceId = devices.length ? devices[devices.length - 1].deviceId : undefined;
 
-        codeReader.decodeFromVideoDevice(
+        await codeReader.decodeFromVideoDevice(
             deviceId,
             v,
             (result, error) => {
@@ -56,7 +64,7 @@ async function startScan() {
 
     } catch (e) {
         console.error(e);
-        err.innerText = '❌ 摄像头无法启动：请使用 HTTPS 或 localhost，并允许相机权限';
+        err.innerText = '❌ 摄像头无法启动：请使用 HTTPS 或 localhost，并允许相机权限。';
         stopScan();
     }
 }
