@@ -2,32 +2,32 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>连续扫码器</title>
-    <script src="https://cdn.jsdelivr.net/npm/@zxing/library@latest/umd/zxing-browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/zxing-browser.min.js"></script>
     <style>
         *{margin:0;padding:0;box-sizing:border-box;}
-        body{padding:20px;font-family:-apple-system,sans-serif;}
+        body{padding:20px;font-family:-apple-system,sans-serif;background:#f7f8fa;}
         #resultInput{
-            width:100%;height:120px;padding:12px;font-size:16px;
-            border:1px solid #ddd;border-radius:10px;margin-bottom:20px;
-            outline: none;resize:none;white-space:pre-wrap;
+            width:100%;height:130px;padding:12px;font-size:16px;
+            border:1px solid #e5e7eb;border-radius:10px;margin-bottom:20px;
+            outline: none;resize:none;white-space:pre-wrap;background:#fff;
         }
         #scanBtn{
-            width:100%;height:52px;background:#2563eb;color:#fff;
-            border:none;border-radius:10px;font-size:17px;
+            width:100%;height:52px;background:#1677ff;color:#fff;
+            border:none;border-radius:10px;font-size:17px;font-weight:500;
         }
-        #scanBtn:active{background:#1d4ed8;}
+        #scanBtn:active{background:#0f5fcc;}
         #videoBox{width:100%;margin-top:20px;display:none;}
-        video{width:100%;border-radius:10px;background:#000;}
+        video{width:100%;border-radius:10px;background:#000;object-fit:cover;}
         .warn-tip{
-            color:#dc2626;margin-top:16px;line-height:1.6;
-            font-size:14px;display:none;padding:12px;background:#fef2f2;border-radius:8px;
+            color:#e53e3e;margin-top:16px;line-height:1.7;
+            font-size:14px;display:none;padding:14px;background:#fff2f2;border-radius:8px;
         }
     </style>
 </head>
 <body>
-    <textarea id="resultInput" placeholder="扫码结果逐行显示在这里"></textarea>
+    <textarea id="resultInput" placeholder="扫码结果自动逐行排列..."></textarea>
     <button id="scanBtn">开启连续扫码</button>
     <div id="videoBox">
         <video id="video" autoplay playsinline muted></video>
@@ -42,70 +42,77 @@ const videoBox = document.getElementById('videoBox');
 const tipBox = document.getElementById('tipBox');
 
 let codeReader = null;
-let isScanning = false;
-let lastCode = "";
-let lockTime = 800; // 防重复扫码间隔
+let isRunning = false;
+let lastScanText = '';
+const delayTime = 1000;
 
-// 停止扫码
-function stopScan(){
+function closeCameraAll(){
     if(codeReader){
         codeReader.reset();
         codeReader = null;
     }
-    isScanning = false;
+    if(video.srcObject){
+        video.srcObject.getTracks.forEach(track=>track.stop());
+        video.srcObject = null;
+    }
+    isRunning = false;
     videoBox.style.display = 'none';
     scanBtn.innerText = '开启连续扫码';
 }
 
-scanBtn.addEventListener('click',async ()=>{
+scanBtn.addEventListener('click', async function(){
     tipBox.style.display = 'none';
-    if(isScanning){
-        stopScan();
+    if(isRunning){
+        closeCameraAll();
         return;
     }
 
-    try{
-        isScanning = true;
+    try {
+        isRunning = true;
         scanBtn.innerText = '停止扫码';
         videoBox.style.display = 'block';
 
+        // 强制指定后置摄像头 解决Firefox调用失败
+        const constraints = {
+            video: {
+                facingMode: { exact: "environment" },
+                width: {ideal:640},
+                height:{ideal:480}
+            }
+        };
+
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = stream;
+
         codeReader = new ZXing.BrowserMultiFormatReader();
-        codeReader.decodeFromVideoDevice(
-            null,
-            video,
-            (result, err) => {
-                if(result){
-                    let currCode = result.text.trim();
-                    // 防短时间重复扫同一个码
-                    if(currCode && currCode !== lastCode){
-                        lastCode = currCode;
-                        // 换行追加
-                        resultInput.value += currCode + "\n";
-                        // 光标自动跳到最后
-                        resultInput.scrollTop = resultInput.scrollHeight;
-                        // 冷却防连发
-                        setTimeout(()=> lastCode = "", lockTime);
-                    }
-                }
-                if(err && !(err instanceof ZXing.NotFoundException)){
-                    console.log(err)
+        codeReader.decodeFromVideoElement(video, (res, err)=>{
+            if(res){
+                let txt = res.text.trim();
+                if(txt && txt !== lastScanText){
+                    lastScanText = txt;
+                    resultInput.value += txt + '\n';
+                    resultInput.scrollTop = resultInput.scrollHeight;
+                    setTimeout(()=>lastScanText='', delayTime);
                 }
             }
-        )
-    }catch(e){
-        isScanning = false;
-        let info = '';
-        if(e.name === 'NotAllowedError'){
-            info = `【iOS Firefox 权限】
-1. 设置→隐私→相机 开启Firefox
-2. 页面点地址栏小锁，相机设为允许`;
+            if(err && !(err.name === 'NotFoundException')){}
+        })
+
+    } catch (error) {
+        closeCameraAll();
+        let tips = '';
+        // 精准匹配iOS Firefox所有权限错误
+        if(error.name === 'OverconstrainedError' || error.name === 'NotAllowedError'){
+            tips = '🔴 iOS Firefox 必做设置：\n1.手机设置 → 隐私与安全性 → 相机 → 打开Firefox权限\n2.当前页面点顶部地址栏左侧🔒权限图标\n3.找到相机权限 设置为【允许】\n4.关闭无痕浏览模式后重试\n5.HTTP本地页面必须手动放行相机';
+        }else if(error.name === 'NotFoundError'){
+            tips = '未找到后置摄像头，切换设备重试';
         }else{
-            info = '调用摄像头失败，请检查权限';
+            tips = '浏览器禁止调用摄像头，请手动开放站点相机权限';
         }
-        tipBox.innerText = info;
+        tipBox.innerText = tips;
         tipBox.style.display = 'block';
     }
-});
+})
 </script>
 </body>
 </html>
