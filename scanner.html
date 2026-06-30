@@ -1,147 +1,140 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>扫码器 (Fixed ZXing)</title>
-
-<script src="https://unpkg.com/@zxing/browser@latest/umd/index.min.js"></script>
-
-<style>
-body{
-    font-family:-apple-system,BlinkMacSystemFont,sans-serif;
-    padding:16px;
-    background:#f5f5f5;
-}
-
-textarea{
-    width:100%;
-    height:140px;
-    font-size:16px;
-    padding:10px;
-    border-radius:10px;
-    border:1px solid #ccc;
-    margin-bottom:12px;
-}
-
-button{
-    width:100%;
-    height:50px;
-    font-size:18px;
-    border:none;
-    border-radius:10px;
-    background:#1677ff;
-    color:white;
-}
-
-button:active{
-    background:#0f5fd0;
-}
-
-video{
-    width:100%;
-    margin-top:12px;
-    border-radius:10px;
-    background:black;
-    display:none;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+    <title>稳定连续扫码</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{padding:20px;font-family:system-ui,sans-serif;background:#f7f8fa;}
+        #resultBox{
+            width:100%;height:130px;padding:12px;font-size:16px;
+            border:1px solid #ddd;border-radius:10px;margin-bottom:20px;
+            outline:none;resize:none;white-space:pre-wrap;background:#fff;
+        }
+        #openScan{
+            width:100%;height:52px;background:#23965e;color:#fff;
+            border:none;border-radius:10px;font-size:17px;
+        }
+        #openScan:active{background:#1c7d4e;}
+        .scanView{width:100%;margin-top:20px;position:relative;display:none;}
+        #video{width:100%;border-radius:10px;background:#000;object-fit:cover;}
+        /* 绿色扫描框 */
+        .focusBox{
+            position:absolute;left:50%;top:50%;
+            width:230px;height:230px;
+            transform:translate(-50%,-50%);
+            border:2px solid #00e676;border-radius:8px;
+            box-shadow:0 0 0 9999px rgba(0,0,0,0.6);
+        }
+        .focusBox::after{
+            content:"";position:absolute;left:0;top:0;width:100%;height:3px;
+            background:#00e676;animation:scanMove 1.5s infinite linear;
+        }
+        @keyframes scanMove{
+            0%{top:0;}100%{top:calc(100% - 3px);}
+        }
+        .errTip{color:#d93025;margin-top:15px;font-size:14px;display:none;padding:10px;background:#ffeaea;border-radius:6px;}
+        #canvas{display:none;}
+    </style>
 </head>
-
 <body>
+    <textarea id="resultBox" placeholder="扫码结果自动分行存放"></textarea>
+    <button id="openScan">开启扫码</button>
 
-<textarea id="out" placeholder="扫描结果..."></textarea>
-<button id="btn">开始扫码</button>
-
-<video id="video" autoplay playsinline></video>
+    <div class="scanView" id="scanView">
+        <video id="video" autoplay playsinline muted></video>
+        <div class="focusBox"></div>
+    </div>
+    <canvas id="canvas"></canvas>
+    <div class="errTip" id="errTip"></div>
 
 <script>
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const btn = document.getElementById('openScan');
+const resultBox = document.getElementById('resultBox');
+const scanView = document.getElementById('scanView');
+const errTip = document.getElementById('errTip');
 
-const btn = document.getElementById("btn");
-const out = document.getElementById("out");
-const video = document.getElementById("video");
+let stream = null;
+let scanLoop = null;
+let lockScan = false;
+let lastScanStr = "";
 
-let codeReader = null;
-let selectedDeviceId = null;
-let lastText = "";
-let lastTime = 0;
+// 关闭所有
+function closeAll(){
+    if(stream){
+        stream.getTracks().forEach(t=>t.stop());
+        stream = null;
+    }
+    clearInterval(scanLoop);
+    scanView.style.display = "none";
+    btn.innerText = "开启扫码";
+    lockScan = false;
+    lastScanStr = "";
+}
 
-function add(text){
-    const now = Date.now();
-
-    // 3秒去重（避免连续重复刷）
-    if(text === lastText && now - lastTime < 3000){
+btn.addEventListener("click",async ()=>{
+    errTip.style.display = "none";
+    if(stream){
+        closeAll();
         return;
     }
-
-    lastText = text;
-    lastTime = now;
-
-    out.value += text + "\n";
-    out.scrollTop = out.scrollHeight;
-
-    navigator.vibrate?.(80);
-}
-
-async function start(){
-
     try{
-
-        codeReader = new ZXingBrowser.BrowserMultiFormatReader();
-
-        const devices = await ZXingBrowser.BrowserCodeReader.listVideoInputDevices();
-
-        if(devices.length === 0){
-            alert("未找到摄像头");
-            return;
-        }
-
-        // 优先后置摄像头
-        selectedDeviceId =
-            devices.find(d => d.label.toLowerCase().includes("back"))?.deviceId
-            || devices[0].deviceId;
-
-        video.style.display = "block";
-
-        await codeReader.decodeFromVideoDevice(
-            selectedDeviceId,
-            video,
-            (result, err) => {
-
-                if(result){
-                    add(result.getText());
-                }
-
-            }
-        );
-
         btn.innerText = "停止扫码";
+        scanView.style.display = "block";
+        stream = await navigator.mediaDevices.getUserMedia({
+            video:{facingMode:"environment",width:480}
+        });
+        video.srcObject = stream;
 
+        scanLoop = setInterval(()=>{
+            if(lockScan) return;
+            if(video.videoWidth <= 10) return;
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            ctx.drawImage(video,0,0);
+            let imgData = ctx.getImageData(0,0,canvas.width,canvas.height);
+            
+            // 先识别二维码
+            let qrRes = jsQR(imgData.data,canvas.width,canvas.height);
+            if(qrRes && qrRes.data){
+                handleCode(qrRes.data);
+                return;
+            }
+        },350);
     }catch(e){
-        console.error(e);
-        alert("摄像头启动失败，请确认 HTTPS + 权限");
-        stop();
+        closeAll();
+        errTip.innerText = "开启失败：关闭无痕，给Firefox相机权限，网页内允许相机";
+        errTip.style.display = "block";
     }
-}
+});
 
-function stop(){
+// 处理扫码结果
+function handleCode(text){
+    if(!text) return;
+    let code = text.trim();
+    if(code === lastScanStr) return;
+    lastScanStr = code;
+    lockScan = true;
 
-    if(codeReader){
-        codeReader.reset();
-        codeReader = null;
+    let isOk = confirm(`已识别：\n${code}\n确认加入列表？`);
+    if(isOk){
+        resultBox.value += code + "\n";
+        resultBox.scrollTop = resultBox.scrollHeight;
     }
 
-    video.style.display = "none";
-    btn.innerText = "开始扫码";
+    // 强制解锁，放开识别
+    setTimeout(()=>{
+        lockScan = false;
+        lastScanStr = "";
+    },1500);
 }
-
-btn.onclick = () => {
-    if(codeReader) stop();
-    else start();
-};
-
 </script>
-
 </body>
 </html>
