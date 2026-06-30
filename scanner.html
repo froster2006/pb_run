@@ -6,296 +6,45 @@
 <title>扫码（QR/EAN/UPC）</title>
 
 <script src="https://unpkg.com/@zxing/library@0.20.0/umd/index.min.js"></script>
-
-<style>
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-    }
-
-    body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        min-height: 100vh;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        padding: 20px;
-    }
-
-    .container {
-        background: white;
-        border-radius: 20px;
-        padding: 30px;
-        max-width: 500px;
-        width: 100%;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        animation: slideUp 0.5s ease-out;
-    }
-
-    @keyframes slideUp {
-        from {
-            opacity: 0;
-            transform: translateY(30px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    h1 {
-        color: #333;
-        font-size: 24px;
-        margin-bottom: 20px;
-        text-align: center;
-        font-weight: 600;
-    }
-
-    .textarea-wrapper {
-        position: relative;
-        margin-bottom: 15px;
-    }
-
-    #res {
-        width: 100%;
-        min-height: 150px;
-        padding: 15px;
-        font-size: 16px;
-        font-family: 'Courier New', monospace;
-        border: 2px solid #e0e0e0;
-        border-radius: 12px;
-        resize: vertical;
-        transition: all 0.3s ease;
-        background: #f8f9fa;
-        color: #333;
-        line-height: 1.6;
-    }
-
-    #res:focus {
-        outline: none;
-        border-color: #667eea;
-        background: white;
-        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
-    }
-
-    #res::placeholder {
-        color: #aaa;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    }
-
-    .char-count {
-        position: absolute;
-        bottom: 10px;
-        right: 15px;
-        font-size: 12px;
-        color: #999;
-        background: rgba(255, 255, 255, 0.9);
-        padding: 2px 8px;
-        border-radius: 10px;
-    }
-
-    #btn {
-        width: 100%;
-        height: 55px;
-        font-size: 18px;
-        font-weight: 600;
-        border: none;
-        border-radius: 12px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        letter-spacing: 1px;
-        position: relative;
-        overflow: hidden;
-    }
-
-    #btn:hover:not(:disabled) {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
-    }
-
-    #btn:active:not(:disabled) {
-        transform: translateY(0px);
-        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
-    }
-
-    #btn:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-    }
-
-    #btn.scanning {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        animation: pulse 1.5s ease-in-out infinite;
-    }
-
-    @keyframes pulse {
-        0%, 100% {
-            transform: scale(1);
-        }
-        50% {
-            transform: scale(1.02);
-        }
-    }
-
-    #err {
-        color: #f5576c;
-        background: #fff5f5;
-        padding: 12px 15px;
-        border-radius: 10px;
-        margin-top: 15px;
-        font-size: 14px;
-        border: 1px solid #fed7d7;
-        display: none;
-    }
-
-    #err:not(:empty) {
-        display: block;
-    }
-
-    #v {
-        width: 100%;
-        border-radius: 12px;
-        margin-top: 15px;
-        background: #000;
-        display: none;
-        border: 2px solid #e0e0e0;
-    }
-
-    #v.active {
-        display: block;
-        animation: fadeIn 0.3s ease-out;
-    }
-
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-        }
-        to {
-            opacity: 1;
-        }
-    }
-
-    .status-bar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-top: 10px;
-        font-size: 13px;
-        color: #888;
-    }
-
-    .status-dot {
-        display: inline-block;
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        margin-right: 6px;
-    }
-
-    .status-dot.idle {
-        background: #ccc;
-    }
-
-    .status-dot.scanning {
-        background: #4ade80;
-        animation: blink 1s infinite;
-    }
-
-    @keyframes blink {
-        0%, 100% {
-            opacity: 1;
-        }
-        50% {
-            opacity: 0.3;
-        }
-    }
-
-    @media (max-width: 600px) {
-        .container {
-            padding: 20px;
-            border-radius: 15px;
-        }
-
-        #res {
-            min-height: 120px;
-            font-size: 14px;
-        }
-
-        #btn {
-            height: 50px;
-            font-size: 16px;
-        }
-    }
-</style>
 </head>
 
 <body>
-<div class="container">
-    <h1>📷 扫码器</h1>
-    
-    <div class="textarea-wrapper">
-        <textarea id="res" placeholder="扫描结果将显示在这里..."></textarea>
-        <span class="char-count" id="charCount">0 字符</span>
-    </div>
-    
-    <button id="btn">📷 开始扫码</button>
-    
-    <div id="err"></div>
-    
-    <video id="v"></video>
-    
-    <div class="status-bar">
-        <span>
-            <span class="status-dot idle" id="statusDot"></span>
-            <span id="statusText">就绪</span>
-        </span>
-        <span id="scanCount">已扫描: 0</span>
-    </div>
-</div>
+<textarea id="res" style="width:100%;height:120px;"></textarea><br>
+<button id="btn" style="width:100%;height:50px;">开始扫码</button>
+<div id="err" style="color:red;"></div>
+<video id="v" style="width:100%;display:none;"></video>
 
 <script>
 let codeReader = null;
 let scanning = false;
-let stream = null;
-let scanCount = 0;
 
 const v = document.getElementById('v');
 const btn = document.getElementById('btn');
 const res = document.getElementById('res');
 const err = document.getElementById('err');
-const charCount = document.getElementById('charCount');
-const statusDot = document.getElementById('statusDot');
-const statusText = document.getElementById('statusText');
-const scanCountEl = document.getElementById('scanCount');
-
-// Update character count
-res.addEventListener('input', () => {
-    const count = res.value.length;
-    charCount.textContent = count + ' 字符';
-});
 
 async function startScan() {
     err.innerText = '';
-    err.style.display = 'none';
-    v.classList.add('active');
+    v.style.display = 'block';
+    v.autoplay = true;
+    v.playsInline = true;
 
-    updateStatus('scanning', '扫描中...');
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        err.innerText = '❌ 浏览器不支持摄像头访问。请使用支持 HTTPS/localhost 的现代浏览器。';
+        stopScan();
+        return;
+    }
+
+    codeReader = new ZXing.BrowserMultiFormatReader();
 
     try {
-        stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { facingMode: 'environment' } 
-        });
-        v.srcObject = stream;
-        await v.play();
-
-        codeReader = new ZXing.BrowserMultiFormatReader();
         scanning = true;
 
-        codeReader.decodeFromVideoElement(
+        const devices = await codeReader.listVideoInputDevices();
+        const deviceId = devices.length ? devices[devices.length - 1].deviceId : undefined;
+
+        await codeReader.decodeFromVideoDevice(
+            deviceId,
             v,
             (result, error) => {
                 if (result) {
@@ -304,84 +53,40 @@ async function startScan() {
 
                     if (confirm('识别到：\n' + txt + '\n确定添加？')) {
                         res.value += txt + '\n';
-                        scanCount++;
-                        scanCountEl.textContent = '已扫描: ' + scanCount;
-                        // Trigger input event to update char count
-                        res.dispatchEvent(new Event('input'));
                     }
 
                     stopScan();
                 }
 
-                if (error && !(error instanceof ZXing.NotFoundException)) {
-                    console.error(error);
-                }
+                // ignore NotFoundException (normal during scanning)
             }
         );
 
     } catch (e) {
         console.error(e);
-        let errorMsg = '❌ 摄像头无法启动：';
-        if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
-            errorMsg += '请允许摄像头权限，并使用 HTTPS 或 localhost';
-        } else if (e.name === 'NotFoundError' || e.name === 'DevicesNotFoundError') {
-            errorMsg += '未找到摄像头设备';
-        } else if (e.name === 'NotReadableError') {
-            errorMsg += '摄像头被其他应用占用';
-        } else {
-            errorMsg += e.message || '未知错误';
-        }
-        err.innerText = errorMsg;
-        err.style.display = 'block';
+        err.innerText = '❌ 摄像头无法启动：请使用 HTTPS 或 localhost，并允许相机权限。';
         stopScan();
     }
 }
 
 function stopScan() {
-    scanning = false;
-    
-    if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        stream = null;
-    }
-    
     if (codeReader) {
-        try {
-            codeReader.reset();
-        } catch (e) {
-            // Ignore reset errors
-        }
+        codeReader.reset();
         codeReader = null;
     }
-    
-    v.srcObject = null;
-    v.classList.remove('active');
-    btn.classList.remove('scanning');
-    btn.textContent = '📷 开始扫码';
-    updateStatus('idle', '就绪');
-}
-
-function updateStatus(state, text) {
-    statusDot.className = 'status-dot ' + state;
-    statusText.textContent = text;
+    v.style.display = 'none';
+    scanning = false;
+    btn.innerText = '开始扫码';
 }
 
 btn.addEventListener('click', async () => {
     if (scanning) {
         stopScan();
     } else {
-        btn.textContent = '⏹ 停止扫码';
-        btn.classList.add('scanning');
+        btn.innerText = '停止扫码';
         await startScan();
     }
 });
-
-window.addEventListener('beforeunload', () => {
-    stopScan();
-});
-
-// Update status on page load
-updateStatus('idle', '就绪');
 </script>
 
 </body>
