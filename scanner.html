@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>iOS Firefox 稳定扫码</title>
-    <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/zxing-browser.min.js"></script>
+    <title>扫码器</title>
+    <script src="https://unpkg.com/zxing-wasm@1.6.2/dist/zxing-browser.min.js"></script>
     <style>
         *{margin:0;padding:0;box-sizing:border-box;}
         body{padding:20px;font-family:-apple-system,sans-serif;background:#f7f8fa;}
@@ -22,10 +22,8 @@
             width:100%;margin-top:20px;position:relative;display:none;
         }
         video{
-            width:100%;border-radius:10px;background:#000;
-            object-fit:cover;
+            width:100%;border-radius:10px;background:#000;object-fit:cover;
         }
-        /* 绿色聚焦框 */
         .scan-box{
             position:absolute;left:50%;top:50%;
             width:240px;height:240px;
@@ -48,8 +46,8 @@
     </style>
 </head>
 <body>
-    <textarea id="resultInput" placeholder="扫码结果（每行一个）"></textarea>
-    <button id="scanBtn">开启连续扫码</button>
+    <textarea id="resultInput" placeholder="扫码结果每行一条"></textarea>
+    <button id="scanBtn">开启扫码</button>
 
     <div class="video-wrap" id="videoWrap">
         <video id="video" autoplay playsinline muted></video>
@@ -65,78 +63,58 @@ const resultInput = document.getElementById('resultInput');
 const videoWrap = document.getElementById('videoWrap');
 const tipBox = document.getElementById('tipBox');
 
-let codeReader = null;
-let isRunning = false;
+let stream = null;
+let scanTimer = null;
 let lastCode = '';
-const coolTime = 1200;
 
-function stopAllCamera(){
-    if(codeReader){
-        codeReader.reset();
-        codeReader = null;
+function stopCamera(){
+    if(stream){
+        stream.getTracks().forEach(t=>t.stop());
+        stream = null;
     }
-    if(video.srcObject){
-        video.srcObject.getTracks().forEach(t=>t.stop());
-        video.srcObject = null;
-    }
-    isRunning = false;
+    clearInterval(scanTimer);
     videoWrap.style.display = 'none';
-    scanBtn.innerText = '开启连续扫码';
+    scanBtn.innerText = '开启扫码';
 }
 
-scanBtn.addEventListener('click', async ()=>{
+scanBtn.addEventListener('click',async ()=>{
     tipBox.style.display = 'none';
-    if(isRunning){
-        stopAllCamera();
+    if(stream){
+        stopCamera();
         return;
     }
-
     try{
-        isRunning = true;
         scanBtn.innerText = '停止扫码';
         videoWrap.style.display = 'block';
-
-        // 兼容 iOS Firefox 的相机配置
-        const constraints = {
-            video:{
-                facingMode:'environment',
-                width:{ideal:480},
-                height:{ideal:640}
-            }
-        };
-
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "environment" }
+        });
         video.srcObject = stream;
 
-        codeReader = new ZXing.BrowserMultiFormatReader();
-        codeReader.decodeFromVideoElement(video, (res, err)=>{
-            if(res){
-                let codeVal = res.text.trim();
-                if(!codeVal || codeVal === lastCode) return;
-                lastCode = codeVal;
+        // 逐帧识别 兼容所有条码+二维码
+        scanTimer = setInterval(()=>{
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video,0,0);
+            const img = canvas.toDataURL('image/png');
 
-                // 弹窗确认
-                if(confirm(`扫描到：\n${codeVal}\n\n确定添加？`)){
-                    resultInput.value += codeVal + '\n';
+            ZXing.readBarcodeFromImage(img).then(res=>{
+                if(!res || !res.text) return;
+                let txt = res.text.trim();
+                if(txt === lastCode) return;
+                lastCode = txt;
+                if(confirm(`识别到内容：\n${txt}\n确定添加？`)){
+                    resultInput.value += txt + '\n';
                     resultInput.scrollTop = resultInput.scrollHeight;
                 }
-                setTimeout(()=>lastCode='', coolTime);
-            }
-            if(err && !(err instanceof ZXing.NotFoundException)){}
-        })
-
-    }catch(err){
-        stopAllCamera();
-        let msg = '';
-        console.error(err);
-        if(err.name === 'NotAllowedError'){
-            msg = '❌ 权限被拒绝！请按步骤：\n1.关闭无痕\n2.设置→隐私→相机→允许Firefox\n3.网页锁图标→相机→允许\n4.重启Firefox';
-        }else if(err.name === 'OverconstrainedError'){
-            msg = '❌ 找不到后置摄像头，切换设备';
-        }else{
-            msg = '❌ 无法打开摄像头：' + err.message;
-        }
-        tipBox.innerText = msg;
+                setTimeout(()=>lastCode='',1000);
+            }).catch(e=>{});
+        },400);
+    }catch(e){
+        stopCamera();
+        tipBox.innerText = '无法打开摄像头，请关闭无痕并开启Firefox相机权限';
         tipBox.style.display = 'block';
     }
 })
