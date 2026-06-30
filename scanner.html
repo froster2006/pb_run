@@ -4,59 +4,82 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>扫码（QR/EAN/UPC）</title>
-<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/zxing-browser.min.js"></script>
+
+<script src="https://unpkg.com/@zxing/library@0.20.0/umd/index.min.js"></script>
 </head>
+
 <body>
 <textarea id="res" style="width:100%;height:120px;"></textarea><br>
 <button id="btn" style="width:100%;height:50px;">开始扫码</button>
-<video id="v" autoplay playsinline style="width:100%;display:none;"></video>
 <div id="err" style="color:red;"></div>
+<video id="v" style="width:100%;display:none;"></video>
 
 <script>
-let v=document.getElementById('v'),
-    btn=document.getElementById('btn'),
-    res=document.getElementById('res'),
-    err=document.getElementById('err');
-let reader=null,stream=null,done=false;
+let codeReader = null;
+let scanning = false;
 
-function closeCam(){
-    done=false;
-    if(reader){reader.reset();reader=null;}
-    if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}
-    v.style.display='none';
-    btn.innerText='开始扫码';
+const v = document.getElementById('v');
+const btn = document.getElementById('btn');
+const res = document.getElementById('res');
+const err = document.getElementById('err');
+
+async function startScan() {
+    err.innerText = '';
+    v.style.display = 'block';
+
+    codeReader = new ZXing.BrowserMultiFormatReader();
+
+    try {
+        scanning = true;
+
+        const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
+        const deviceId = devices.length ? devices[devices.length - 1].deviceId : null;
+
+        codeReader.decodeFromVideoDevice(
+            deviceId,
+            v,
+            (result, error) => {
+                if (result) {
+                    const txt = result.getText();
+                    scanning = false;
+
+                    if (confirm('识别到：\n' + txt + '\n确定添加？')) {
+                        res.value += txt + '\n';
+                    }
+
+                    stopScan();
+                }
+
+                // ignore NotFoundException (normal during scanning)
+            }
+        );
+
+    } catch (e) {
+        console.error(e);
+        err.innerText = '❌ 摄像头无法启动：请使用 HTTPS 或 localhost，并允许相机权限';
+        stopScan();
+    }
 }
 
-btn.addEventListener('click',async ()=>{
-    err.innerText='';
-    if(stream) return;
-    try{
-        btn.innerText='对准条码';
-        v.style.display='block';
-        stream=await navigator.mediaDevices.getUserMedia({
-            video:{facingMode:'environment',width:{ideal:640}}
-        });
-        v.srcObject=stream;
-        reader=new ZXing.BrowserMultiFormatReader();
-        done=false;
-        reader.decodeFromVideoElement(v,(r,e)=>{
-            if(done)return;
-            if(r){
-                done=true;
-                let txt=r.text.trim();
-                if(confirm('识别到：\n'+txt+'\n确定添加？')){
-                    res.value+=txt+'\n';
-                }
-                closeCam();
-            }
-            if(e&&!(e instanceof ZXing.NotFoundException))console.log(e);
-        });
-    }catch(e){
-        closeCam();
-        err.innerText='❌ 无法打开摄像头：\n1) 关闭无痕模式\n2) 设置→隐私→相机→开启Firefox\n3) 用HTTPS/localhost打开';
-        console.error(e);
+function stopScan() {
+    if (codeReader) {
+        codeReader.reset();
+        codeReader = null;
     }
-})
+    v.style.display = 'none';
+    scanning = false;
+    btn.innerText = '开始扫码';
+}
+
+btn.addEventListener('click', async () => {
+    if (scanning) {
+        stopScan();
+    } else {
+        btn.innerText = '停止扫码';
+        await startScan();
+    }
+});
 </script>
+
 </body>
 </html>
