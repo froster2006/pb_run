@@ -1,126 +1,59 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
-    <title>QR+EAN+UPC 单次扫码｜扫完自动关</title>
-    <!-- 稳定版 ZXing（解决 Can't find variable: ZXing） -->
-    <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/zxing-browser.min.js"></script>
-    <style>
-        *{margin:0;padding:0;box-sizing:border-box;}
-        body{padding:20px;font-family:system-ui,sans-serif;background:#f7f8fa;}
-        #resultBox{
-            width:100%;height:130px;padding:12px;font-size:16px;
-            border:1px solid #ddd;border-radius:10px;margin-bottom:20px;
-            outline:none;resize:none;white-space:pre-wrap;background:#fff;
-        }
-        #scanBtn{
-            width:100%;height:52px;background:#1677ff;color:#fff;
-            border:none;border-radius:10px;font-size:17px;
-        }
-        #scanBtn:active{background:#0f5fcc;}
-        .scanView{width:100%;margin-top:20px;position:relative;display:none;}
-        #video{width:100%;border-radius:10px;background:#000;object-fit:cover;}
-        .focusBox{
-            position:absolute;left:50%;top:50%;
-            width:260px;height:260px;
-            transform:translate(-50%,-50%);
-            border:2px solid #00e676;border-radius:8px;
-            box-shadow:0 0 0 9999px rgba(0,0,0,0.6);
-        }
-        .focusBox::after{
-            content:"";position:absolute;left:0;top:0;width:100%;height:3px;
-            background:#00e676;animation:scanMove 1.5s infinite linear;
-        }
-        @keyframes scanMove{
-            0%{top:0;}100%{top:calc(100% - 3px);}
-        }
-        .errTip{color:#d93025;margin-top:15px;font-size:14px;display:none;padding:10px;background:#ffeaea;border-radius:6px;}
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>扫码（QR/EAN/UPC）</title>
+<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/zxing-browser.min.js"></script>
 </head>
 <body>
-    <textarea id="resultBox" placeholder="扫码结果逐行显示在这里"></textarea>
-    <button id="scanBtn">点击开始扫码</button>
-
-    <div class="scanView" id="scanView">
-        <video id="video" autoplay playsinline muted></video>
-        <div class="focusBox"></div>
-    </div>
-    <div class="errTip" id="errTip"></div>
+<textarea id="res" style="width:100%;height:120px;"></textarea><br>
+<button id="btn" style="width:100%;height:50px;">开始扫码</button>
+<video id="v" autoplay playsinline style="width:100%;display:none;"></video>
+<div id="err" style="color:red;"></div>
 
 <script>
-const video = document.getElementById('video');
-const scanBtn = document.getElementById('scanBtn');
-const resultBox = document.getElementById('resultBox');
-const scanView = document.getElementById('scanView');
-const errTip = document.getElementById('errTip');
+let v=document.getElementById('v'),
+    btn=document.getElementById('btn'),
+    res=document.getElementById('res'),
+    err=document.getElementById('err');
+let reader=null,stream=null,done=false;
 
-let codeReader = null;
-let mediaStream = null;
-let scanned = false; // 防止重复扫码
-
-// 关闭摄像头 & 停止识别
-function closeCamera(){
-    scanned = false;
-    if(codeReader){
-        codeReader.reset();
-        codeReader = null;
-    }
-    if(mediaStream){
-        mediaStream.getTracks().forEach(track=>track.stop());
-        mediaStream = null;
-    }
-    scanView.style.display = 'none';
-    scanBtn.innerText = '点击开始扫码';
+function closeCam(){
+    done=false;
+    if(reader){reader.reset();reader=null;}
+    if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}
+    v.style.display='none';
+    btn.innerText='开始扫码';
 }
 
-scanBtn.addEventListener('click',async ()=>{
-    errTip.style.display = 'none';
-    if(mediaStream) return;
-
+btn.addEventListener('click',async ()=>{
+    err.innerText='';
+    if(stream) return;
     try{
-        scanBtn.innerText = '对准条码扫描';
-        scanView.style.display = 'block';
-
-        // 调用后置摄像头（iOS Firefox 兼容）
-        const constraints = {
-            video: { facingMode: "environment", width: { ideal: 640 } }
-        };
-        mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
-        video.srcObject = mediaStream;
-
-        // 初始化：同时支持 QR + EAN-13 + UPC-A
-        codeReader = new ZXing.BrowserMultiFormatReader();
-        scanned = false;
-
-        codeReader.decodeFromVideoElement(video, (result, err) => {
-            if(scanned) return; // 防止重复触发
-
-            if(result){
-                scanned = true;
-                let codeText = result.text.trim();
-                // 弹窗确认
-                let confirmAdd = confirm(`识别成功（${result.format}）\n内容：${codeText}\n确定添加？`);
-                if(confirmAdd){
-                    resultBox.value += codeText + '\n';
-                    resultBox.scrollTop = resultBox.scrollHeight;
+        btn.innerText='对准条码';
+        v.style.display='block';
+        stream=await navigator.mediaDevices.getUserMedia({
+            video:{facingMode:'environment',width:{ideal:640}}
+        });
+        v.srcObject=stream;
+        reader=new ZXing.BrowserMultiFormatReader();
+        done=false;
+        reader.decodeFromVideoElement(v,(r,e)=>{
+            if(done)return;
+            if(r){
+                done=true;
+                let txt=r.text.trim();
+                if(confirm('识别到：\n'+txt+'\n确定添加？')){
+                    res.value+=txt+'\n';
                 }
-                // 无论确认与否，立刻关闭摄像头
-                closeCamera();
+                closeCam();
             }
-            // 忽略“未找到码”的正常报错
-            if(err && !(err instanceof ZXing.NotFoundException)){
-                console.log(err);
-            }
-        })
+            if(e&&!(e instanceof ZXing.NotFoundException))console.log(e);
+        });
     }catch(e){
-        closeCamera();
-        errTip.innerText = 
-            '❌ 无法打开摄像头：\n' +
-            '1) 关闭 Firefox 无痕模式\n' +
-            '2) iPhone 设置→隐私→相机→开启 Firefox\n' +
-            '3) 刷新页面再试';
-        errTip.style.display = 'block';
+        closeCam();
+        err.innerText='❌ 无法打开摄像头：\n1) 关闭无痕模式\n2) 设置→隐私→相机→开启Firefox\n3) 用HTTPS/localhost打开';
         console.error(e);
     }
 })
