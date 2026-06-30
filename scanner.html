@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
-    <title>单次扫码｜QR+条码｜扫完自动关</title>
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <title>QR+EAN+UPC 单次扫码｜扫完自动关</title>
+    <!-- 稳定版 ZXing（解决 Can't find variable: ZXing） -->
+    <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/zxing-browser.min.js"></script>
     <style>
         *{margin:0;padding:0;box-sizing:border-box;}
         body{padding:20px;font-family:system-ui,sans-serif;background:#f7f8fa;}
@@ -22,7 +23,7 @@
         #video{width:100%;border-radius:10px;background:#000;object-fit:cover;}
         .focusBox{
             position:absolute;left:50%;top:50%;
-            width:230px;height:230px;
+            width:260px;height:260px;
             transform:translate(-50%,-50%);
             border:2px solid #00e676;border-radius:8px;
             box-shadow:0 0 0 9999px rgba(0,0,0,0.6);
@@ -35,7 +36,6 @@
             0%{top:0;}100%{top:calc(100% - 3px);}
         }
         .errTip{color:#d93025;margin-top:15px;font-size:14px;display:none;padding:10px;background:#ffeaea;border-radius:6px;}
-        #canvas{display:none;}
     </style>
 </head>
 <body>
@@ -46,32 +46,35 @@
         <video id="video" autoplay playsinline muted></video>
         <div class="focusBox"></div>
     </div>
-    <canvas id="canvas"></canvas>
     <div class="errTip" id="errTip"></div>
 
 <script>
 const video = document.getElementById('video');
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
 const scanBtn = document.getElementById('scanBtn');
 const resultBox = document.getElementById('resultBox');
 const scanView = document.getElementById('scanView');
 const errTip = document.getElementById('errTip');
 
+let codeReader = null;
 let mediaStream = null;
-let scanning = false;
+let scanned = false; // 防止重复扫码
 
+// 关闭摄像头 & 停止识别
 function closeCamera(){
-    scanning = false;
+    scanned = false;
+    if(codeReader){
+        codeReader.reset();
+        codeReader = null;
+    }
     if(mediaStream){
-        mediaStream.getTracks().forEach(t=>t.stop());
+        mediaStream.getTracks().forEach(track=>track.stop());
         mediaStream = null;
     }
     scanView.style.display = 'none';
     scanBtn.innerText = '点击开始扫码';
 }
 
-scanBtn.addEventListener('click', async () => {
+scanBtn.addEventListener('click',async ()=>{
     errTip.style.display = 'none';
     if(mediaStream) return;
 
@@ -79,43 +82,37 @@ scanBtn.addEventListener('click', async () => {
         scanBtn.innerText = '对准条码扫描';
         scanView.style.display = 'block';
 
-        mediaStream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'environment', width: 480 }
-        });
-
+        // 调用后置摄像头（iOS Firefox 兼容）
+        const constraints = {
+            video: { facingMode: "environment", width: { ideal: 640 } }
+        };
+        mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
         video.srcObject = mediaStream;
-        scanning = true;
 
-        function scanFrame(){
-            if(!scanning) return;
-            if(video.videoWidth < 10){
-                requestAnimationFrame(scanFrame);
-                return;
-            }
+        // 初始化：同时支持 QR + EAN-13 + UPC-A
+        codeReader = new ZXing.BrowserMultiFormatReader();
+        scanned = false;
 
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            ctx.clearRect(0,0,canvas.width,canvas.height);
-            ctx.drawImage(video,0,0);
-            let img = ctx.getImageData(0,0,canvas.width,canvas.height);
+        codeReader.decodeFromVideoElement(video, (result, err) => {
+            if(scanned) return; // 防止重复触发
 
-            let qr = jsQR(img.data, canvas.width, canvas.height);
-            if(qr && qr.data){
-                scanning = false;
-                let code = qr.data.trim();
-                let ok = confirm(`识别到：\n${code}\n确认添加？`);
-                if(ok){
-                    resultBox.value += code + '\n';
+            if(result){
+                scanned = true;
+                let codeText = result.text.trim();
+                // 弹窗确认
+                let confirmAdd = confirm(`识别成功（${result.format}）\n内容：${codeText}\n确定添加？`);
+                if(confirmAdd){
+                    resultBox.value += codeText + '\n';
                     resultBox.scrollTop = resultBox.scrollHeight;
                 }
+                // 无论确认与否，立刻关闭摄像头
                 closeCamera();
-                return;
             }
-
-            requestAnimationFrame(scanFrame);
-        }
-        scanFrame();
-
+            // 忽略“未找到码”的正常报错
+            if(err && !(err instanceof ZXing.NotFoundException)){
+                console.log(err);
+            }
+        })
     }catch(e){
         closeCamera();
         errTip.innerText = 
