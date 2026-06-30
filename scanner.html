@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>HTTP本地扫码器</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{padding:20px;font-family:-apple-system,sans-serif;}
+        #resultInput{
+            width:100%;height:52px;padding:0 16px;font-size:16px;
+            border:1px solid #ddd;border-radius:10px;margin-bottom:20px;
+            outline: none;
+        }
+        #scanBtn{
+            width:100%;height:52px;background:#2563eb;color:#fff;
+            border:none;border-radius:10px;font-size:17px;
+        }
+        #scanBtn:active{background:#1d4ed8;}
+        #videoBox{width:100%;margin-top:20px;display:none;}
+        video{width:100%;border-radius:10px;background:#000;}
+        canvas{display:none;}
+        .warn-tip{
+            color:#dc2626;margin-top:16px;line-height:1.6;
+            font-size:14px;display:none;padding:12px;background:#fef2f2;border-radius:8px;
+        }
+    </style>
+</head>
+<body>
+    <input type="text" id="resultInput" placeholder="扫码结果自动填入此处">
+    <button id="scanBtn">开启摄像头扫码</button>
+    <div id="videoBox">
+        <video id="video" autoplay playsinline muted></video>
+    </div>
+    <canvas id="canvas"></canvas>
+    <div class="warn-tip" id="tipBox"></div>
+
+<script>
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const scanBtn = document.getElementById('scanBtn');
+const resultInput = document.getElementById('resultInput');
+const videoBox = document.getElementById('videoBox');
+const tipBox = document.getElementById('tipBox');
+
+let stream = null;
+let scanLoop = null;
+
+// 关闭摄像头
+function stopCamera(){
+    if(stream){
+        stream.getTracks().forEach(t=>t.stop());
+        stream = null;
+    }
+    clearInterval(scanLoop);
+    videoBox.style.display = 'none';
+    scanBtn.innerText = '开启摄像头扫码';
+}
+
+// 开始扫码识别
+function runScan(){
+    scanLoop = setInterval(()=>{
+        if(!video.videoWidth) return;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video,0,0);
+        let res = jsQR(ctx.getImageData(0,0,canvas.width,canvas.height).data,canvas.width,canvas.height);
+        if(res){
+            resultInput.value = res.data;
+            stopCamera();
+        }
+    },280);
+}
+
+// 点击事件
+scanBtn.addEventListener('click',async ()=>{
+    tipBox.style.display = 'none';
+    if(stream){
+        stopCamera();
+        return;
+    }
+
+    try{
+        // 强制后置摄像头，兼容移动端
+        stream = await navigator.mediaDevices.getUserMedia({
+            video:{facingMode:'environment',width:480}
+        });
+        video.srcObject = stream;
+        videoBox.style.display = 'block';
+        scanBtn.innerText = '关闭扫码';
+        runScan();
+    }catch(e){
+        // 精准判断iOS Firefox权限问题
+        let info = '';
+        if(e.name === 'NotAllowedError'){
+            info = `【iOS Firefox 相机权限解决方法】
+1. 先打开手机 设置 → 隐私与安全性 → 相机
+2. 找到 Firefox 浏览器，打开相机总权限
+3. 打开Firefox → 进入此网页
+4. 点击地址栏左侧 🔒 权限图标
+5. 找到相机权限，设置为【允许】
+6. HTTP本地访问必须手动放行站点相机权限`;
+        }else if(e.name === 'NotFoundError'){
+            info = '未识别到可用摄像头，请检查设备';
+        }else{
+            info = `浏览器拒绝调用摄像头\n原因：HTTP本地访问 + Firefox站点权限未开启\n按上方步骤开启权限即可`;
+        }
+        tipBox.innerText = info;
+        tipBox.style.display = 'block';
+    }
+});
+</script>
+</body>
+</html>
