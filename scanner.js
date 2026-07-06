@@ -44,8 +44,10 @@ function beep() {
 
 function flashSuccess() {
     videoWrapper.classList.add('flash-success');
+    res.classList.add('flash-success');
     setTimeout(() => {
         videoWrapper.classList.remove('flash-success');
+        res.classList.remove('flash-success');
     }, 200);
 }
 
