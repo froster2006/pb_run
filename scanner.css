@@ -1,0 +1,144 @@
+body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background: linear-gradient(135deg, #0f172a, #1e293b);
+    color: #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+h1 {
+    font-size: 18px;
+    margin-bottom: 15px;
+    color: #f8fafc;
+}
+
+.video-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 420px;
+    border-radius: 16px;
+    margin-bottom: 15px;
+    display: none;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    background: #000;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.video-wrapper.active {
+    display: block;
+}
+
+#v {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.scan-laser {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(to right, transparent, #22c55e, transparent);
+    animation: scan 2s linear infinite;
+    pointer-events: none;
+    z-index: 10;
+}
+
+@keyframes scan {
+    0% {
+        top: 0%;
+    }
+    50% {
+        top: 100%;
+    }
+    100% {
+        top: 0%;
+    }
+}
+
+.flash-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(34, 197, 94, 0.25);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 20;
+    transition: opacity 0.1s ease-out;
+}
+
+.video-wrapper.flash-success {
+    border-color: #22c55e;
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.4);
+}
+
+.video-wrapper.flash-success .flash-overlay {
+    opacity: 1;
+}
+
+
+textarea {
+    width: 100%;
+    max-width: 420px;
+    height: 140px;
+    border-radius: 14px;
+    border: none;
+    padding: 12px;
+    font-size: 14px;
+    outline: none;
+    resize: none;
+    background: rgba(255,255,255,0.08);
+    color: #e2e8f0;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1);
+    backdrop-filter: blur(8px);
+}
+
+textarea::placeholder {
+    color: #94a3b8;
+}
+
+button {
+    width: 100%;
+    max-width: 420px;
+    height: 52px;
+    margin-top: 12px;
+    border: none;
+    border-radius: 14px;
+    font-size: 16px;
+    font-weight: 600;
+    color: white;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    box-shadow: 0 8px 20px rgba(34,197,94,0.35);
+    cursor: pointer;
+    transition: transform 0.1s ease, opacity 0.2s ease;
+}
+
+button:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+}
+
+#err {
+    margin-top: 10px;
+    max-width: 420px;
+    color: #f87171;
+    font-size: 13px;
+    text-align: center;
+}
+
+.container {
+    width: 100%;
+    max-width: 420px;
+}

@@ -1,181 +1,28 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>扫码（QR/EAN/UPC）</title>
-
-<script src="https://unpkg.com/@zxing/library@0.20.0/umd/index.min.js"></script>
-
-<style>
-    body {
-        margin: 0;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-        background: linear-gradient(135deg, #0f172a, #1e293b);
-        color: #e2e8f0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        min-height: 100vh;
-        padding: 20px;
-        box-sizing: border-box;
-    }
-
-    h1 {
-        font-size: 18px;
-        margin-bottom: 15px;
-        color: #f8fafc;
-    }
-
-    #v {
-        width: 100%;
-        max-width: 420px;
-        border-radius: 16px;
-        margin-bottom: 15px;
-        display: none;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    }
-
-    textarea {
-        width: 100%;
-        max-width: 420px;
-        height: 140px;
-        border-radius: 14px;
-        border: none;
-        padding: 12px;
-        font-size: 14px;
-        outline: none;
-        resize: none;
-        background: rgba(255,255,255,0.08);
-        color: #e2e8f0;
-        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1);
-        backdrop-filter: blur(8px);
-    }
-
-    textarea::placeholder {
-        color: #94a3b8;
-    }
-
-    button {
-        width: 100%;
-        max-width: 420px;
-        height: 52px;
-        margin-top: 12px;
-        border: none;
-        border-radius: 14px;
-        font-size: 16px;
-        font-weight: 600;
-        color: white;
-        background: linear-gradient(135deg, #22c55e, #16a34a);
-        box-shadow: 0 8px 20px rgba(34,197,94,0.35);
-        cursor: pointer;
-        transition: transform 0.1s ease, opacity 0.2s ease;
-    }
-
-    button:active {
-        transform: scale(0.98);
-        opacity: 0.9;
-    }
-
-    #err {
-        margin-top: 10px;
-        max-width: 420px;
-        color: #f87171;
-        font-size: 13px;
-        text-align: center;
-    }
-
-    .container {
-        width: 100%;
-        max-width: 420px;
-    }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>扫码（QR/EAN/UPC）</title>
+    <link rel="stylesheet" href="scanner.css">
+    <script src="https://unpkg.com/@zxing/library@0.20.0/umd/index.min.js"></script>
 </head>
-
 <body>
 
-<h1>📷 扫码（QR / EAN / UPC）</h1>
+    <h1>📷 扫码（QR / EAN / UPC）</h1>
 
-<video id="v"></video>
+    <div class="video-wrapper" id="videoWrapper">
+        <video id="v"></video>
+        <div class="scan-laser"></div>
+        <div class="flash-overlay"></div>
+    </div>
 
-<div class="container">
-    <textarea id="res" placeholder="扫描结果会显示在这里..."></textarea>
-    <button id="btn">开始扫码</button>
-    <div id="err"></div>
-</div>
+    <div class="container">
+        <textarea id="res" placeholder="扫描结果会显示在这里..."></textarea>
+        <button id="btn">开始扫码</button>
+        <div id="err"></div>
+    </div>
 
-<script>
-let codeReader = null;
-let scanning = false;
-
-const v = document.getElementById('v');
-const btn = document.getElementById('btn');
-const res = document.getElementById('res');
-const err = document.getElementById('err');
-
-async function startScan() {
-    err.innerText = '';
-    v.style.display = 'block';
-    v.autoplay = true;
-    v.playsInline = true;
-
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        err.innerText = '❌ 浏览器不支持摄像头访问，请使用 HTTPS 或 localhost';
-        stopScan();
-        return;
-    }
-
-    codeReader = new ZXing.BrowserMultiFormatReader();
-
-    try {
-        scanning = true;
-
-        const devices = await codeReader.listVideoInputDevices();
-        const deviceId = devices.length ? devices[devices.length - 1].deviceId : undefined;
-
-        await codeReader.decodeFromVideoDevice(
-            deviceId,
-            v,
-            (result) => {
-                if (result) {
-                    const txt = result.getText();
-                    scanning = false;
-
-                    if (confirm('识别到：\n' + txt + '\n确定添加？')) {
-                        res.value += txt + '\n';
-                    }
-
-                    stopScan();
-                }
-            }
-        );
-
-    } catch (e) {
-        console.error(e);
-        err.innerText = '❌ 摄像头无法启动（检查 HTTPS / 权限）';
-        stopScan();
-    }
-}
-
-function stopScan() {
-    if (codeReader) {
-        codeReader.reset();
-        codeReader = null;
-    }
-    v.style.display = 'none';
-    scanning = false;
-    btn.innerText = '开始扫码';
-}
-
-btn.addEventListener('click', async () => {
-    if (scanning) {
-        stopScan();
-    } else {
-        btn.innerText = '停止扫码';
-        await startScan();
-    }
-});
-</script>
-
+    <script src="scanner.js"></script>
 </body>
 </html>
