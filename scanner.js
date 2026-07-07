@@ -9,6 +9,7 @@ const v = document.getElementById('v');
 const btn = document.getElementById('btn');
 const res = document.getElementById('res');
 const err = document.getElementById('err');
+const btnCopy = document.getElementById('btnCopy');
 
 let audioCtx = null;
 
@@ -138,4 +139,23 @@ btn.addEventListener('click', async () => {
         btn.innerText = '停止扫码';
         await startScan();
     }
+});
+
+btnCopy.addEventListener('click', () => {
+    const textToCopy = res.value;
+    if (!textToCopy) {
+        return;
+    }
+    
+    navigator.clipboard.writeText(textToCopy).then(() => {
+        const originalText = btnCopy.innerText;
+        btnCopy.innerText = '📋 已复制！';
+        btnCopy.style.opacity = '0.9';
+        setTimeout(() => {
+            btnCopy.innerText = originalText;
+            btnCopy.style.opacity = '';
+        }, 1500);
+    }).catch(err => {
+        console.error('Failed to copy text: ', err);
+    });
 });

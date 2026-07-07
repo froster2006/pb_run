@@ -148,3 +148,20 @@ button:active {
     width: 100%;
     max-width: 420px;
 }
+
+.button-group {
+    display: flex;
+    gap: 12px;
+    margin-top: 12px;
+    width: 100%;
+}
+
+.button-group button {
+    margin-top: 0;
+    flex: 1;
+}
+
+#btnCopy {
+    background: linear-gradient(135deg, #475569, #334155);
+    box-shadow: 0 8px 20px rgba(71, 85, 105, 0.25);
+}
