@@ -248,3 +248,166 @@ function exportExcel(){
 }
 
 initDateInput();
+
+// ================= INLINE SCANNER CODE =================
+let codeReader = null;
+let scanning = false;
+const scanCooldowns = new Map();
+const COOLDOWN_MS = 2000;
+let lastScans = [];
+
+const videoWrapper = document.getElementById('videoWrapper');
+const v = document.getElementById('v');
+const scanBtn = document.getElementById('scanBtn');
+const text1 = document.getElementById('text1');
+
+let audioCtx = null;
+
+function initAudio() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+}
+
+function beep() {
+    try {
+        initAudio();
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime); // A5 pitch beep
+        gain.gain.setValueAtTime(0, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.12);
+        
+        osc.start(audioCtx.currentTime);
+        osc.stop(audioCtx.currentTime + 0.12);
+    } catch (e) {
+        console.error('Audio feedback failed:', e);
+    }
+}
+
+function flashSuccess() {
+    if (videoWrapper) {
+        videoWrapper.classList.add('flash-success');
+    }
+    if (text1) {
+        text1.classList.add('flash-success');
+    }
+    setTimeout(() => {
+        if (videoWrapper) videoWrapper.classList.remove('flash-success');
+        if (text1) text1.classList.remove('flash-success');
+    }, 200);
+}
+
+async function startScan() {
+    if (!videoWrapper || !v || !scanBtn) return;
+    videoWrapper.style.display = 'block';
+    videoWrapper.classList.add('active');
+    v.autoplay = true;
+    v.playsInline = true;
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('❌ 浏览器不支持摄像头访问，请使用 HTTPS 或 localhost');
+        stopScan();
+        return;
+    }
+
+    codeReader = new ZXing.BrowserMultiFormatReader();
+    scanCooldowns.clear();
+    lastScans = [];
+
+    try {
+        scanning = true;
+        scanBtn.classList.add('scanning');
+        const iconEl = scanBtn.querySelector('.scan-icon');
+        const textEl = scanBtn.querySelector('.scan-text');
+        if (iconEl) iconEl.textContent = '⏹️';
+        if (textEl) textEl.textContent = '停止';
+
+        const devices = await codeReader.listVideoInputDevices();
+        const deviceId = devices.length ? devices[devices.length - 1].deviceId : undefined;
+
+        await codeReader.decodeFromVideoDevice(
+            deviceId,
+            v,
+            (result) => {
+                if (result) {
+                    const txt = result.getText();
+                    const now = Date.now();
+                    
+                    // Prevent duplicate scans within the cooldown window
+                    if (scanCooldowns.has(txt) && (now - scanCooldowns.get(txt)) < COOLDOWN_MS) {
+                        return;
+                    }
+
+                    // Prevent duplicate scans if same as last two scan results
+                    if (lastScans.includes(txt)) {
+                        return;
+                    }
+
+                    scanCooldowns.set(txt, now);
+
+                    // Update last scans list (keep last 2)
+                    lastScans.push(txt);
+                    if (lastScans.length > 2) {
+                        lastScans.shift();
+                    }
+
+                    // Continuous feedback: beep sound and green border flash
+                    beep();
+                    flashSuccess();
+
+                    // Instantly append to the results textarea
+                    if (text1) {
+                        text1.value += txt + '\n';
+                        text1.scrollTop = text1.scrollHeight; // Scroll to view latest result
+                    }
+                }
+            }
+        );
+
+    } catch (e) {
+        console.error(e);
+        alert('❌ 摄像头无法启动（检查 HTTPS / 权限）');
+        stopScan();
+    }
+}
+
+function stopScan() {
+    if (codeReader) {
+        codeReader.reset();
+        codeReader = null;
+    }
+    if (videoWrapper) {
+        videoWrapper.style.display = 'none';
+        videoWrapper.classList.remove('active');
+    }
+    scanning = false;
+    if (scanBtn) {
+        scanBtn.classList.remove('scanning');
+        const iconEl = scanBtn.querySelector('.scan-icon');
+        const textEl = scanBtn.querySelector('.scan-text');
+        if (iconEl) iconEl.textContent = '📷';
+        if (textEl) textEl.textContent = '扫码';
+    }
+}
+
+if (scanBtn) {
+    scanBtn.addEventListener('click', async () => {
+        initAudio();
+
+        if (scanning) {
+            stopScan();
+        } else {
+            await startScan();
+        }
+    });
+}
