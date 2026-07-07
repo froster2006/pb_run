@@ -2,6 +2,7 @@ let codeReader = null;
 let scanning = false;
 const scanCooldowns = new Map();
 const COOLDOWN_MS = 2000; // 2 seconds cooldown per distinct code
+let lastScans = [];
 
 const videoWrapper = document.getElementById('videoWrapper');
 const v = document.getElementById('v');
@@ -65,6 +66,7 @@ async function startScan() {
 
     codeReader = new ZXing.BrowserMultiFormatReader();
     scanCooldowns.clear(); // Reset scan cache on startup
+    lastScans = [];
 
     try {
         scanning = true;
@@ -84,7 +86,19 @@ async function startScan() {
                     if (scanCooldowns.has(txt) && (now - scanCooldowns.get(txt)) < COOLDOWN_MS) {
                         return;
                     }
+
+                    // Prevent duplicate scans if same as last two scan results
+                    if (lastScans.includes(txt)) {
+                        return;
+                    }
+
                     scanCooldowns.set(txt, now);
+
+                    // Update last scans list (keep last 2)
+                    lastScans.push(txt);
+                    if (lastScans.length > 2) {
+                        lastScans.shift();
+                    }
 
                     // Continuous feedback: beep sound and green border flash
                     beep();
