@@ -30,15 +30,21 @@
     <script src="scanner.js"></script>
     <script>
         document.getElementById('btnPersonalBest').addEventListener('click', async () => {
-            const msgDiv = document.getElementById('personalBestMsg');
-            try {
-                const response = await fetch('https://0i6hydevx6.execute-api.us-east-1.amazonaws.com/dev/personalBestTime');
-                const text = await response.text();
-                msgDiv.textContent = text;
-            } catch (e) {
-                msgDiv.textContent = 'Error: ' + e;
-            }
-        });
+    const textarea = document.getElementById('res');
+    try {
+        const response = await fetch('https://0i6hydevx6.execute-api.us-east-1.amazonaws.com/dev/personalBestTime');
+        const data = await response.json(); // object with body string
+        const items = JSON.parse(data.body);
+        // Convert each object to two‑column tab‑separated line (first two fields)
+        const formatted = items.map(item => {
+            const vals = Object.values(item);
+            return vals.slice(0, 2).join('\t');
+        }).join('\n');
+        textarea.value = formatted;
+    } catch (e) {
+        textarea.value = 'Error: ' + e;
+    }
+});
     </script>
     <div id="personalBestMsg" style="margin-top:10px; font-weight:bold;"></div>
 </body>
