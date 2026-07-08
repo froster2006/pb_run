@@ -32,7 +32,7 @@
         document.getElementById('btnPersonalBest').addEventListener('click', async () => {
             const msgDiv = document.getElementById('personalBestMsg');
             try {
-                const response = await fetch('https://0i6hydevx6.execute-api.us-east-1.amazonaws.com/dev/personalBestTime');
+                const response = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://0i6hydevx6.execute-api.us-east-1.amazonaws.com/dev/personalBestTime'));
                 const text = await response.text();
                 msgDiv.textContent = text;
             } catch (e) {
