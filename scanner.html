@@ -294,8 +294,9 @@
                     }
                     filteredItems = allItems.slice();
                     currentPage   = 0;
-                    sortKey       = null;
-                    sortAsc       = true;
+                    sortKey       = 'count';  // default: 2nd column
+                    sortAsc       = false;    // largest → smallest
+                    applySort();
                     render(resultDiv);
                 } catch (e) {
                     resultDiv.innerHTML = '<p class="pb-loading" style="color:#f87171">Error: ' + e + '</p>';
