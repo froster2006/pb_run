@@ -91,6 +91,43 @@ function loadPbData(){
         });
 }
 
+async function loadPbFromApi(){
+    let textarea = document.getElementById('text3');
+    if(!textarea) return;
+
+    textarea.value = '正在加载 PB 数据...';
+
+    try {
+        let response = await fetch('https://0i6hydevx6.execute-api.us-east-1.amazonaws.com/dev/personalBestTime');
+        if(!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        let payload = await response.json();
+        let bodyData = payload;
+        if(payload && typeof payload.body === 'string') {
+            try {
+                bodyData = JSON.parse(payload.body);
+            } catch (parseError) {
+                bodyData = [];
+            }
+        }
+
+        let items = Array.isArray(bodyData) ? bodyData : [];
+        let lines = items.map(item => {
+            let id = item?.wexinID ?? item?.wexinid ?? item?.ID ?? item?.id ?? '';
+            let pbTime = item?.PBTime ?? item?.pbTime ?? item?.PB ?? item?.pb ?? '';
+            return `${String(id)}\t${String(pbTime)}`;
+        }).filter(line => line && line !== '\t');
+
+        textarea.value = lines.join('\n');
+    } catch (error) {
+        console.error('加载 PB 数据失败:', error);
+        textarea.value = '';
+        alert('加载 PB 数据失败，请稍后重试。');
+    }
+}
+
 function makeTable(){
     let str1 = document.getElementById('text1').value.trim();
     let str2 = document.getElementById('text2').value.trim();
@@ -248,6 +285,7 @@ function exportExcel(){
 }
 
 initDateInput();
+document.getElementById('loadPbBtn')?.addEventListener('click', loadPbFromApi);
 
 // ================= INLINE SCANNER CODE =================
 let codeReader = null;
