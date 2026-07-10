@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>PB Run 编辑器</title>
+    <link rel="stylesheet" href="pbeditor.css">
+</head>
+
+<body>
+
+    <h1>PB Run 编辑器</h1>
+
+    <div class="container">
+        <div id="personalBestResult"></div>
+            <div class="button-group">
+            </div>
+        <div id="err"></div>
+    </div>
+
+    <!-- ── Edit Modal ─────────────────────────────────── -->
+    <div id="editBackdrop" class="edit-backdrop" hidden>
+        <div class="edit-modal" role="dialog" aria-modal="true" aria-labelledby="editModalTitle">
+            <div class="edit-modal-header">
+                <span class="edit-medal">🏅</span>
+                <span id="editModalTitle" class="edit-modal-title">编辑记录</span>
+                <button class="edit-close-btn" id="editCloseBtn" title="关闭">✕</button>
+            </div>
+            <div class="edit-modal-body">
+                <label class="edit-label">次数</label>
+                <input id="editCount" class="edit-input" type="text" placeholder="次数">
+                <label class="edit-label">最佳时间</label>
+                <input id="editPBTime" class="edit-input" type="text" placeholder="mm:ss.ff">
+                <label class="edit-label">PB 日期</label>
+                <input id="editPBDate" class="edit-input" type="text" placeholder="yyyy-mm-dd">
+            </div>
+            <div class="edit-modal-footer">
+                <button class="edit-save-btn" id="editSaveBtn">✔ 保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="pbeditor.js"></script>
+</body>
+
+</html>
