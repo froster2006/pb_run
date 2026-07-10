@@ -23,9 +23,13 @@
     <div id="editBackdrop" class="edit-backdrop" hidden>
         <div class="edit-modal" role="dialog" aria-modal="true" aria-labelledby="editModalTitle">
             <div class="edit-modal-header">
-                <span class="edit-medal">🏅</span>
-                <span id="editModalTitle" class="edit-modal-title">编辑记录</span>
-                <button class="edit-close-btn" id="editCloseBtn" title="关闭">✕</button>
+                <div class="edit-modal-title-wrap">
+                    <span class="edit-medal">🏅</span>
+                    <span id="editModalTitle" class="edit-modal-title">编辑记录</span>
+                </div>
+                <div class="edit-modal-actions">
+                    <button class="edit-close-btn" id="editCloseBtn" title="关闭">✕</button>
+                </div>
             </div>
             <div class="edit-modal-body">
                 <label class="edit-label">次数</label>
@@ -36,6 +40,7 @@
                 <input id="editPBDate" class="edit-input" type="text" placeholder="yyyy-mm-dd">
             </div>
             <div class="edit-modal-footer">
+                <button class="edit-delete-btn" id="editDeleteBtn" title="删除记录">🗑 删除此人</button>
                 <button class="edit-save-btn" id="editSaveBtn">✔ 保存</button>
             </div>
         </div>

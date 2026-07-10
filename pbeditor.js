@@ -45,6 +45,7 @@
     // ── modal ─────────────────────────────────────────
     const backdrop = document.getElementById('editBackdrop');
     const closeBtn = document.getElementById('editCloseBtn');
+    const deleteBtn = document.getElementById('editDeleteBtn');
     const saveBtn = document.getElementById('editSaveBtn');
     const inCount = document.getElementById('editCount');
     const inPBTime = document.getElementById('editPBTime');
@@ -68,6 +69,63 @@
     closeBtn.addEventListener('click', closeModal);
     backdrop.addEventListener('click', e => { if (e.target === backdrop) closeModal(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+    deleteBtn.addEventListener('click', async () => {
+        if (!editingItem) return;
+
+        const endpoint = 'https://0i6hydevx6.execute-api.us-east-1.amazonaws.com/dev/personalBestTime';
+        const originalText = deleteBtn.textContent;
+        const removedItem = editingItem;
+        const removedKey = String(removedItem.wexinID ?? '').trim();
+        const previousAllItems = allItems.slice();
+        const previousFilteredItems = filteredItems.slice();
+        const resultDiv = document.getElementById('personalBestResult');
+
+        deleteBtn.disabled = true;
+        deleteBtn.textContent = '删除中...';
+
+        allItems = allItems.filter(item => String(item.wexinID ?? '').trim() !== removedKey);
+        filteredItems = filteredItems.filter(item => String(item.wexinID ?? '').trim() !== removedKey);
+        currentPage = 0;
+        const q = document.getElementById('pbSearch');
+        applyFilter(q ? q.value : '');
+        closeModal();
+        if (resultDiv) render(resultDiv);
+
+        try {
+            const payload = { body: JSON.stringify({ wexinID: removedItem.wexinID }) };
+            const resp = await fetch(endpoint, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+
+            deleteBtn.textContent = '✔ 已删除';
+            deleteBtn.style.background = 'linear-gradient(135deg,#16a34a,#15803d)';
+        } catch (e) {
+            console.error('Delete failed:', e);
+            allItems = previousAllItems;
+            filteredItems = previousFilteredItems;
+            currentPage = 0;
+            applyFilter(q ? q.value : '');
+            if (resultDiv) render(resultDiv);
+            deleteBtn.textContent = '删除失败';
+            deleteBtn.style.background = 'linear-gradient(135deg,#ef4444,#b91c1c)';
+            setTimeout(() => {
+                deleteBtn.textContent = originalText;
+                deleteBtn.style.background = '';
+                deleteBtn.disabled = false;
+            }, 1600);
+            return;
+        }
+
+        setTimeout(() => {
+            deleteBtn.textContent = '🗑 删除';
+            deleteBtn.style.background = '';
+            deleteBtn.disabled = false;
+        }, 900);
+    });
 
     saveBtn.addEventListener('click', async () => {
         if (!editingItem) return;
