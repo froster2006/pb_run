@@ -52,7 +52,7 @@
 
     function openModal(item) {
         editingItem = item;
-        document.getElementById('editModalTitle').textContent = '🏅 ' + (item.wexinID ?? '—');
+        document.getElementById('editModalTitle').textContent =  (item.wexinID ?? '—');
         inCount.value = item.count ?? '';
         inPBTime.value = item.PBTime ?? '';
         inPBDate.value = item.PBDate ?? '';
@@ -73,20 +73,41 @@
         if (!editingItem) return;
 
         // Apply edits back to the item in allItems (ID is read-only)
+
         editingItem.count = inCount.value.trim();
         editingItem.PBTime = inPBTime.value.trim();
         editingItem.PBDate = inPBDate.value.trim();
 
-        // TODO: replace this stub with the real API call
-        // await fetch('https://...your-save-endpoint...', {
-        //     method: 'POST',
-        //     headers: { 'Content-Type': 'application/json' },
-        //     body: JSON.stringify(editingItem),
-        // });
+        // Send update to API (PUT)
+        const endpoint = 'https://0i6hydevx6.execute-api.us-east-1.amazonaws.com/dev/personalBestTime';
+        const originalText = saveBtn.textContent;
+        saveBtn.disabled = true;
+        saveBtn.textContent = '保存中...';
 
-        // Visual feedback
-        saveBtn.textContent = '✔ 已保存！';
-        saveBtn.style.background = 'linear-gradient(135deg,#16a34a,#15803d)';
+        try {
+            const payload = { body: JSON.stringify(editingItem) };
+            const resp = await fetch(endpoint, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+
+            // Visual success
+            saveBtn.textContent = '✔ 已保存！';
+            saveBtn.style.background = 'linear-gradient(135deg,#16a34a,#15803d)';
+        } catch (e) {
+            console.error('Save failed:', e);
+            saveBtn.textContent = '保存失败';
+            saveBtn.style.background = 'linear-gradient(135deg,#ef4444,#b91c1c)';
+            setTimeout(() => {
+                saveBtn.textContent = originalText;
+                saveBtn.style.background = '';
+                saveBtn.disabled = false;
+            }, 1600);
+            return;
+        }
+
         setTimeout(() => {
             saveBtn.textContent = '✔ 保存';
             saveBtn.style.background = '';
@@ -96,6 +117,7 @@
             applyFilter(q ? q.value : '');
             const resultDiv = document.getElementById('personalBestResult');
             render(resultDiv);
+            saveBtn.disabled = false;
         }, 900);
     });
 
