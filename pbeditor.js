@@ -51,6 +51,15 @@
     const inPBTime = document.getElementById('editPBTime');
     const inPBDate = document.getElementById('editPBDate');
 
+    const addBackdrop = document.getElementById('addBackdrop');
+    const addCloseBtn = document.getElementById('addCloseBtn');
+    const addSaveBtn = document.getElementById('addSaveBtn');
+    const addWexinID = document.getElementById('addWexinID');
+    const addCount = document.getElementById('addCount');
+    const addPBTime = document.getElementById('addPBTime');
+    const addPBDate = document.getElementById('addPBDate');
+    const addRecordBtn = document.getElementById('addRecordBtn');
+
     function openModal(item) {
         editingItem = item;
         document.getElementById('editModalTitle').textContent =  (item.wexinID ?? '—');
@@ -66,9 +75,39 @@
         editingItem = null;
     }
 
+    function openAddModal() {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+
+        addWexinID.value = '';
+        addCount.value = '1';
+        addPBTime.value = '45:00.0';
+        addPBDate.value = yyyy + '-' + mm + '-' + dd;
+        addBackdrop.hidden = false;
+        addWexinID.focus();
+    }
+
+    function closeAddModal() {
+        addBackdrop.hidden = true;
+        addWexinID.value = '';
+        addCount.value = '';
+        addPBTime.value = '';
+        addPBDate.value = '';
+    }
+
     closeBtn.addEventListener('click', closeModal);
     backdrop.addEventListener('click', e => { if (e.target === backdrop) closeModal(); });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+    addCloseBtn.addEventListener('click', closeAddModal);
+    addBackdrop.addEventListener('click', e => { if (e.target === addBackdrop) closeAddModal(); });
+    addRecordBtn.addEventListener('click', openAddModal);
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            if (!addBackdrop.hidden) closeAddModal();
+            else if (!backdrop.hidden) closeModal();
+        }
+    });
 
     deleteBtn.addEventListener('click', async () => {
         if (!editingItem) return;
@@ -176,6 +215,72 @@
             const resultDiv = document.getElementById('personalBestResult');
             render(resultDiv);
             saveBtn.disabled = false;
+        }, 900);
+    });
+
+    addSaveBtn.addEventListener('click', async () => {
+        const wexinID = addWexinID.value.trim();
+        const count = addCount.value.trim();
+        const pbTime = addPBTime.value.trim();
+        const pbDate = addPBDate.value.trim();
+
+        if (!wexinID) {
+            addWexinID.focus();
+            return;
+        }
+
+        const endpoint = 'https://0i6hydevx6.execute-api.us-east-1.amazonaws.com/dev/personalBestTime';
+        const originalText = addSaveBtn.textContent;
+        const previousAllItems = allItems.slice();
+        const previousFilteredItems = filteredItems.slice();
+        const previousPage = currentPage;
+        const resultDiv = document.getElementById('personalBestResult');
+        const q = document.getElementById('pbSearch');
+        const searchValue = q ? q.value : '';
+        const newItem = { wexinID, count, PBTime: pbTime, PBDate: pbDate };
+
+        addSaveBtn.disabled = true;
+        addSaveBtn.textContent = '保存中...';
+
+        allItems.unshift(newItem);
+        filteredItems = allItems.slice();
+        currentPage = 0;
+        applyFilter(searchValue);
+        closeAddModal();
+        if (resultDiv) render(resultDiv);
+
+        try {
+            const payload = { body: JSON.stringify(newItem) };
+            const resp = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+
+            addSaveBtn.textContent = '✔ 已保存！';
+            addSaveBtn.style.background = 'linear-gradient(135deg,#16a34a,#15803d)';
+        } catch (e) {
+            console.error('Add failed:', e);
+            allItems = previousAllItems;
+            filteredItems = previousFilteredItems;
+            currentPage = previousPage;
+            applyFilter(searchValue);
+            if (resultDiv) render(resultDiv);
+            addSaveBtn.textContent = '保存失败';
+            addSaveBtn.style.background = 'linear-gradient(135deg,#ef4444,#b91c1c)';
+            setTimeout(() => {
+                addSaveBtn.textContent = originalText;
+                addSaveBtn.style.background = '';
+                addSaveBtn.disabled = false;
+            }, 1600);
+            return;
+        }
+
+        setTimeout(() => {
+            addSaveBtn.textContent = '✔ 保存';
+            addSaveBtn.style.background = '';
+            addSaveBtn.disabled = false;
         }, 900);
     });
 

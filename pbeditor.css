@@ -13,8 +13,36 @@ body {
 
 h1 {
     font-size: 18px;
-    margin-bottom: 15px;
+    margin: 0;
     color: #f8fafc;
+}
+
+.page-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    max-width: 420px;
+    margin-bottom: 12px;
+}
+
+.title-action-btn {
+    align-self: flex-start;
+    width: auto;
+    max-width: none;
+    height: 36px;
+    margin-top: 0;
+    padding: 0 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 6px 16px rgba(34,197,94,0.25);
+}
+
+.title-action-btn:hover {
+    transform: translateY(-1px);
+    opacity: 0.95;
 }
 
 .video-wrapper {

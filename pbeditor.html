@@ -10,7 +10,10 @@
 
 <body>
 
-    <h1>PB Run 编辑器</h1>
+    <div class="page-header">
+        <h1>PB Run 编辑器</h1>
+        <button id="addRecordBtn" class="title-action-btn" type="button">＋ 新增记录</button>
+    </div>
 
     <div class="container">
         <div id="personalBestResult"></div>
@@ -42,6 +45,34 @@
             <div class="edit-modal-footer">
                 <button class="edit-delete-btn" id="editDeleteBtn" title="删除记录">🗑 删除此人</button>
                 <button class="edit-save-btn" id="editSaveBtn">✔ 保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Add Modal ──────────────────────────────────── -->
+    <div id="addBackdrop" class="edit-backdrop" hidden>
+        <div class="edit-modal" role="dialog" aria-modal="true" aria-labelledby="addModalTitle">
+            <div class="edit-modal-header">
+                <div class="edit-modal-title-wrap">
+                    <span class="edit-medal">➕</span>
+                    <span id="addModalTitle" class="edit-modal-title">新增记录</span>
+                </div>
+                <div class="edit-modal-actions">
+                    <button class="edit-close-btn" id="addCloseBtn" title="关闭">✕</button>
+                </div>
+            </div>
+            <div class="edit-modal-body">
+                <label class="edit-label">微信ID</label>
+                <input id="addWexinID" class="edit-input" type="text" placeholder="微信ID">
+                <label class="edit-label">次数</label>
+                <input id="addCount" class="edit-input" type="text" placeholder="次数">
+                <label class="edit-label">最佳时间</label>
+                <input id="addPBTime" class="edit-input" type="text" placeholder="mm:ss.ff">
+                <label class="edit-label">PB 日期</label>
+                <input id="addPBDate" class="edit-input" type="text" placeholder="yyyy-mm-dd">
+            </div>
+            <div class="edit-modal-footer">
+                <button class="edit-save-btn" id="addSaveBtn">✔ 保存</button>
             </div>
         </div>
     </div>
