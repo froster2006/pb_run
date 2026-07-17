@@ -125,5 +125,5 @@ def analyze_time_history(formatted_tsv_path: str, stat_output_tsv: str):
 
 # Example usage
 if __name__ == "__main__":
-    # format_tsv_time("pbrun_history.txt", "pbrun_history_formatted.txt")
+    #format_tsv_time("pbrun_history.txt", "pbrun_history_formatted.txt")
     analyze_time_history("pbrun_history_formatted.txt", "pbrun_history_stat.txt")

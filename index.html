@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>PB Run 本周成绩</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <script src="https://unpkg.com/@zxing/library@0.20.0/umd/index.min.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -20,23 +19,11 @@
         <div class="box-item">
             <label>数据1：ID与名次交替行</label>
             
-            <div class="video-wrapper" id="videoWrapper" style="display: none;">
-                <video id="v"></video>
-                <div class="scan-laser"></div>
-                <div class="flash-overlay"></div>
-            </div>
-
-            <div class="textarea-row">
-                <textarea id="text1" placeholder="示例：
+            <textarea id="text1" placeholder="示例：
         RunnerA
         1
         RunnerB
         2"></textarea>
-                <button id="scanBtn" class="btn-scan" type="button">
-                    <span class="scan-icon">📷</span>
-                    <span class="scan-text">扫码</span>
-                </button>
-            </div>
         </div>
         
         <div class="box-item">
