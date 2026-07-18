@@ -126,9 +126,7 @@ function buildApiIdCountMap(records){
     (Array.isArray(records) ? records : []).forEach(item => {
         let record = normalizeApiPbRecord(item);
         if(record.id){
-            let parsedCount = Number.parseInt(record.count, 10);
-            let historyCount = Number.isNaN(parsedCount) || parsedCount < 1 ? 1 : parsedCount;
-            counts[record.id] = historyCount;
+            counts[record.id] = Number.parseInt(record.count, 10);
         }
     });
     return counts;
