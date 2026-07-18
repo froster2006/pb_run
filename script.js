@@ -95,15 +95,18 @@ function loadPbData(){
 function normalizeApiPbRecord(item){
     let id = '';
     let pbTime = '';
+    let count = '';
 
     if(item){
         id = item.wexinID || item.wexinid || item.ID || item.id || '';
         pbTime = item.PBTime || item.pbTime || item.PB || item.pb || '';
+        count = item.count ?? item.Count ?? item.cnt ?? item.times ?? '';
     }
 
     return {
         id: String(id).trim(),
-        pbTime: String(pbTime).trim()
+        pbTime: String(pbTime).trim(),
+        count: String(count).trim()
     };
 }
 
@@ -123,7 +126,9 @@ function buildApiIdCountMap(records){
     (Array.isArray(records) ? records : []).forEach(item => {
         let record = normalizeApiPbRecord(item);
         if(record.id){
-            counts[record.id] = (counts[record.id] || 0) + 1;
+            let parsedCount = Number.parseInt(record.count, 10);
+            let historyCount = Number.isNaN(parsedCount) || parsedCount < 1 ? 1 : parsedCount;
+            counts[record.id] = historyCount;
         }
     });
     return counts;
@@ -289,7 +294,7 @@ function exportExcel(){
         ['名次','wexinID','count','PBTime','PBDate','type'],
         ...tableData.map(item => {
             let normalizedId = item.id ? item.id.trim() : '';
-            let countValue = normalizedId ? (apiIdCounts[normalizedId] || 1) : 1;
+            let countValue = normalizedId ? ((apiIdCounts[normalizedId] || 0) + 1) : 1;
             let typeValue = '';
             let pbDateValue = '';
 
