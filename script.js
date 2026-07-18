@@ -1,4 +1,5 @@
 let tableData = [];
+let apiPbData = [];
 
 // 解析 MM:SS 或 MM:SS.xx 为毫秒
 function parseDuration(timeString){
@@ -91,6 +92,43 @@ function loadPbData(){
         });
 }
 
+function normalizeApiPbRecord(item){
+    let id = '';
+    let pbTime = '';
+
+    if(item){
+        id = item.wexinID || item.wexinid || item.ID || item.id || '';
+        pbTime = item.PBTime || item.pbTime || item.PB || item.pb || '';
+    }
+
+    return {
+        id: String(id).trim(),
+        pbTime: String(pbTime).trim()
+    };
+}
+
+function buildApiPbMap(records){
+    let map = {};
+    (Array.isArray(records) ? records : []).forEach(item => {
+        let record = normalizeApiPbRecord(item);
+        if(record.id){
+            map[record.id] = record.pbTime;
+        }
+    });
+    return map;
+}
+
+function buildApiIdCountMap(records){
+    let counts = {};
+    (Array.isArray(records) ? records : []).forEach(item => {
+        let record = normalizeApiPbRecord(item);
+        if(record.id){
+            counts[record.id] = (counts[record.id] || 0) + 1;
+        }
+    });
+    return counts;
+}
+
 async function loadPbFromApi(){
     let textarea = document.getElementById('text3');
     if(!textarea) return;
@@ -114,10 +152,10 @@ async function loadPbFromApi(){
         }
 
         let items = Array.isArray(bodyData) ? bodyData : [];
+        apiPbData = items;
         let lines = items.map(item => {
-            let id = item?.wexinID ?? item?.wexinid ?? item?.ID ?? item?.id ?? '';
-            let pbTime = item?.PBTime ?? item?.pbTime ?? item?.PB ?? item?.pb ?? '';
-            return `${String(id)}\t${String(pbTime)}`;
+            let record = normalizeApiPbRecord(item);
+            return `${record.id}\t${record.pbTime}`;
         }).filter(line => line && line !== '\t');
 
         textarea.value = lines.join('\n');
@@ -241,48 +279,47 @@ function exportExcel(){
         alert('请先生成成绩表格！');
         return;
     }
+
+    const dateInput = document.getElementById('dateInput');
+    const dateValue = dateInput && dateInput.value ? dateInput.value : getCurrentDateValue();
+    const apiPbMap = buildApiPbMap(apiPbData);
+    const apiIdCounts = buildApiIdCountMap(apiPbData);
+
     let sheetData = [
-        ['名次','ID','用时','PB'],
-        ...tableData.map(item => [item.rank, item.id, item.time, item.pbLabel])
+        ['名次','wexinID','count','PBTime','PBDate','type'],
+        ...tableData.map(item => {
+            let normalizedId = item.id ? item.id.trim() : '';
+            let countValue = normalizedId ? (apiIdCounts[normalizedId] || 1) : 1;
+            let typeValue = '';
+            let pbDateValue = '';
+
+            if(normalizedId && item.time){
+                let currentMs = parseDuration(item.time);
+                let existingPb = apiPbMap[normalizedId];
+                let existingPbMs = existingPb ? parseDuration(existingPb) : NaN;
+
+                if(!existingPb || Number.isNaN(existingPbMs)){
+                    typeValue = 'New!';
+                    pbDateValue = dateValue;
+                } else if(!Number.isNaN(currentMs) && !Number.isNaN(existingPbMs) && currentMs < existingPbMs){
+                    typeValue = 'PB!';
+                    pbDateValue = dateValue;
+                }
+            }
+
+            return [item.rank, item.id, countValue, item.time, pbDateValue, typeValue];
+        })
     ];
+
     const ws = XLSX.utils.aoa_to_sheet(sheetData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, '本周成绩');
 
-    let pbEntries = parsePbEntries(document.getElementById('text3').value.trim());
-    let pbMap = buildPbMap(pbEntries);
-
-    let updatedPbMap = { ...pbMap };
-    let newIds = [];
-    tableData.forEach(item => {
-        if(!item.id || !item.time) return;
-        let currentMs = parseDuration(item.time);
-        let oldPb = updatedPbMap[item.id];
-        let oldPbMs = oldPb ? parseDuration(oldPb) : NaN;
-
-        if(!oldPb || (!Number.isNaN(currentMs) && !Number.isNaN(oldPbMs) && currentMs < oldPbMs)){
-            updatedPbMap[item.id] = item.time;
-        }
-        if(!pbMap[item.id] && !newIds.includes(item.id)){
-            newIds.push(item.id);
-        }
-    });
-
-    let updatedPbRows = pbEntries.map(entry => [entry.id, updatedPbMap[entry.id] || entry.pb]);
-    newIds.forEach(id => {
-        updatedPbRows.push([id, updatedPbMap[id]]);
-    });
-
-    let sheetData2 = [
-        ['ID','PB'],
-        ...updatedPbRows
-    ];
-    const ws2 = XLSX.utils.aoa_to_sheet(sheetData2);
-    XLSX.utils.book_append_sheet(wb, ws2, '更新PB');
-
-    const dateValue = document.getElementById('dateInput')?.value || 'date';
     XLSX.writeFile(wb, `PBRun-${dateValue}.xlsx`);
 }
 
 initDateInput();
-document.getElementById('loadPbBtn')?.addEventListener('click', loadPbFromApi);
+let loadPbBtn = document.getElementById('loadPbBtn');
+if(loadPbBtn){
+    loadPbBtn.addEventListener('click', loadPbFromApi);
+}
