@@ -14,6 +14,7 @@
     let sortKey = null;
     let sortAsc = true;
     let editingItem = null;   // reference to item being edited
+    let isSearchComposing = false;
 
     // ── filter & sort ─────────────────────────────────
     function applyFilter(query) {
@@ -286,27 +287,58 @@
 
     // ── render ────────────────────────────────────────
     function render(resultDiv) {
-        const existingSearch = resultDiv.querySelector('#pbSearch');
-        const searchVal = existingSearch ? existingSearch.value : '';
+        const loadingMsg = resultDiv.querySelector('.pb-loading');
+        if (loadingMsg) {
+            loadingMsg.remove();
+        }
 
-        resultDiv.innerHTML = '';
+        let searchWrap = resultDiv.querySelector('.pb-search-wrap');
+        if (!searchWrap) {
+            searchWrap = document.createElement('div');
+            searchWrap.className = 'pb-search-wrap';
+            resultDiv.appendChild(searchWrap);
+        }
 
-        // Search box
-        const searchWrap = document.createElement('div');
-        searchWrap.className = 'pb-search-wrap';
-        const searchInput = document.createElement('input');
-        searchInput.id = 'pbSearch';
-        searchInput.className = 'pb-search';
-        searchInput.type = 'search';
-        searchInput.placeholder = '🔍 搜索微信ID…';
-        searchInput.value = searchVal;
-        searchInput.addEventListener('input', () => {
-            currentPage = 0;
-            applyFilter(searchInput.value);
-            render(resultDiv);
-        });
-        searchWrap.appendChild(searchInput);
-        resultDiv.appendChild(searchWrap);
+        let searchInput = searchWrap.querySelector('#pbSearch');
+        if (!searchInput) {
+            searchInput = document.createElement('input');
+            searchInput.id = 'pbSearch';
+            searchInput.className = 'pb-search';
+            searchInput.type = 'text';
+            searchInput.autocomplete = 'off';
+            searchInput.placeholder = '🔍 搜索微信ID…';
+            searchWrap.appendChild(searchInput);
+
+            searchInput.addEventListener('compositionstart', () => {
+                isSearchComposing = true;
+            });
+            searchInput.addEventListener('compositionend', () => {
+                isSearchComposing = false;
+                currentPage = 0;
+                applyFilter(searchInput.value);
+                render(resultDiv);
+            });
+            searchInput.addEventListener('input', () => {
+                if (isSearchComposing) return;
+                currentPage = 0;
+                applyFilter(searchInput.value);
+                render(resultDiv);
+            });
+            searchInput.addEventListener('change', () => {
+                if (isSearchComposing) return;
+                currentPage = 0;
+                applyFilter(searchInput.value);
+                render(resultDiv);
+            });
+        }
+
+        let tableWrap = resultDiv.querySelector('.pb-table-wrap');
+        if (!tableWrap) {
+            tableWrap = document.createElement('div');
+            tableWrap.className = 'pb-table-wrap';
+            resultDiv.appendChild(tableWrap);
+        }
+        tableWrap.innerHTML = '';
 
         // Pagination math
         const total = filteredItems.length;
@@ -361,7 +393,6 @@
                 COLUMNS.forEach((col, colIdx) => {
                     const td = row.insertCell();
                     if (colIdx === 0) {
-                        // wexinID → clickable link
                         const link = document.createElement('a');
                         link.href = '#';
                         link.className = 'pb-id-link';
@@ -377,7 +408,7 @@
                 });
             }
         }
-        resultDiv.appendChild(table);
+        tableWrap.appendChild(table);
 
         // Pagination bar
         const pager = document.createElement('div');
@@ -402,13 +433,14 @@
         pager.appendChild(btnPrev);
         pager.appendChild(info);
         pager.appendChild(btnNext);
-        resultDiv.appendChild(pager);
+        tableWrap.appendChild(pager);
 
         // Restore search focus
-        const newSearch = resultDiv.querySelector('#pbSearch');
-        if (newSearch) {
-            newSearch.focus();
-            newSearch.setSelectionRange(newSearch.value.length, newSearch.value.length);
+        if (searchInput) {
+            searchInput.focus();
+            try {
+                searchInput.setSelectionRange(searchInput.value.length, searchInput.value.length);
+            } catch (e) {}
         }
     }
 
