@@ -107,18 +107,43 @@ def lambda_handler(event, context):
                 continue
 
             if not item_type:
-                result = table.update_item(
-                    Key={"wexinID": wexinID},
-                    UpdateExpression="SET #c = :count",
-                    ExpressionAttributeNames={"#c": "count"},
-                    ExpressionAttributeValues={":count": count},
-                    ReturnValues="ALL_NEW"
-                )
-                updated_items.append(result.get("Attributes", {}))
-                continue
+                # Build the update expression dynamically based on provided fields
+                update_expression_parts = []
+                expression_attribute_names = {}
+                expression_attribute_values = {}
+                
+                # Check each field and add to update if not None
+                if count is not None:
+                    update_expression_parts.append("#c = :count")
+                    expression_attribute_names["#c"] = "count"
+                    expression_attribute_values[":count"] = count
+                
+                if PBTime is not None:
+                    update_expression_parts.append("#t = :time")
+                    expression_attribute_names["#t"] = "PBTime"
+                    expression_attribute_values[":time"] = PBTime
+                
+                if PBDate is not None:
+                    update_expression_parts.append("#d = :date")
+                    expression_attribute_names["#d"] = "PBDate"
+                    expression_attribute_values[":date"] = PBDate
+                
+                # Only proceed if there's at least one field to update
+                if update_expression_parts:
+                    update_expression = "SET " + ", ".join(update_expression_parts)
+                    
+                    result = table.update_item(
+                        Key={"wexinID": wexinID},
+                        UpdateExpression=update_expression,
+                        ExpressionAttributeNames=expression_attribute_names,
+                        ExpressionAttributeValues=expression_attribute_values,
+                        ReturnValues="ALL_NEW"
+                    )
+                    updated_items.append(result.get("Attributes", {}))
+                    continue
 
             updated_items.append({"wexinID": wexinID, "skipped": True, "reason": "unsupported type"})
-
+            
         return response(
             200,
             {
