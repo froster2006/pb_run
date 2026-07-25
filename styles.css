@@ -27,6 +27,37 @@ h2 {
     font-weight: 700;
 }
 
+.title-action-row {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+
+.btn-open-editor {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 18px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #ffffff;
+    text-decoration: none;
+    background: linear-gradient(135deg, #4f46e5, #3730a3);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.btn-open-editor:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(79, 70, 229, 0.55);
+    opacity: 0.95;
+}
+
+.btn-open-editor:active {
+    transform: translateY(0) scale(0.98);
+}
+
 .date-row {
     display: flex;
     align-items: center;
