@@ -277,18 +277,11 @@ function makeTable(){
     });
 }
 
-function exportExcel(){
-    if(tableData.length === 0){
-        alert('请先生成成绩表格！');
-        return;
-    }
-
-    const dateInput = document.getElementById('dateInput');
-    const dateValue = dateInput && dateInput.value ? dateInput.value : getCurrentDateValue();
+function buildUpdatePBData(dateValue){
     const apiPbMap = buildApiPbMap(apiPbData);
     const apiIdCounts = buildApiIdCountMap(apiPbData);
 
-    let sheetData = [
+    return [
         ['名次','wexinID','count','PBTime','PBDate','type'],
         ...tableData.map(item => {
             let normalizedId = item.id ? item.id.trim() : '';
@@ -313,6 +306,67 @@ function exportExcel(){
             return [item.rank, item.id, countValue, item.time, pbDateValue, typeValue];
         })
     ];
+}
+
+//this function will convert the updated pb data into json format, so it can be sent to the API for updating the PB records
+function convertToJsonForApi(){
+    if(tableData.length === 0){
+        alert('请先生成成绩表格！');
+        return;
+    }
+    
+    const updateData = buildUpdatePBData(dateValue);    
+    //create an array of objects for the API
+    const jsonData = updateData.slice(1).map(row => ({
+
+        wexinID: row[1],
+        count: row[2],
+        PBTime: row[3],
+        PBDate: row[4],
+        type: row[5]
+    }));
+
+    return JSON.stringify(jsonData, null, 2);
+    
+}
+// this function will post the updated PB data to the API endpoint for updating the PB records
+async function postUpdatedPBDataToApi(){
+    const jsonData = convertToJsonForApi();
+    if(!jsonData){
+        return;
+    }
+
+    try {
+        const response = await fetch('https://0i6hydevx6.execute-api.us-east-1.amazonaws.com/dev/updatePersonalBestTime', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: jsonData
+        });
+
+        if(!response.ok){
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+        alert('PB 数据已成功更新！');
+        console.log('API Response:', result);
+    } catch (error) {
+        console.error('更新 PB 数据失败:', error);
+        alert('更新 PB 数据失败，请稍后重试。');
+    }
+}
+
+function exportExcel(){
+    if(tableData.length === 0){
+        alert('请先生成成绩表格！');
+        return;
+    }
+
+    const dateInput = document.getElementById('dateInput');
+    const dateValue = dateInput && dateInput.value ? dateInput.value : getCurrentDateValue();
+    const sheetData = buildUpdatePBData(dateValue);
 
     const ws = XLSX.utils.aoa_to_sheet(sheetData);
     const wb = XLSX.utils.book_new();
