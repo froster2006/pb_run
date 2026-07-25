@@ -27,8 +27,16 @@ h1 {
     margin-bottom: 12px;
 }
 
+.header-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    gap: 8px;
+}
+
 .title-action-btn {
-    align-self: flex-start;
+    align-self: auto;
     width: auto;
     max-width: none;
     height: 36px;
@@ -43,6 +51,15 @@ h1 {
 .title-action-btn:hover {
     transform: translateY(-1px);
     opacity: 0.95;
+}
+
+.export-btn {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.25);
+}
+
+.export-btn:hover {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
 }
 
 .video-wrapper {

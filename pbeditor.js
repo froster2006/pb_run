@@ -474,6 +474,69 @@
         }
     }
 
+    // ── Export to Excel ───────────────────────────────
+    const exportExcelBtn = document.getElementById('exportExcelBtn');
+
+    function exportToExcel() {
+        if (!filteredItems || filteredItems.length === 0) {
+            alert('没有可导出的数据');
+            return;
+        }
+
+        const originalText = exportExcelBtn.textContent;
+        exportExcelBtn.disabled = true;
+        exportExcelBtn.textContent = '导出中... ⏳';
+
+        setTimeout(() => {
+            try {
+                const headers = COLUMNS.map(col => col.label);
+                const rows = filteredItems.map(item => 
+                    COLUMNS.map(col => item[col.key] ?? '')
+                );
+
+                const escapeCSV = (val) => {
+                    if (val === null || val === undefined) return '';
+                    let str = val.toString();
+                    if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+                        return '"' + str.replace(/"/g, '""') + '"';
+                    }
+                    return str;
+                };
+
+                const csvRows = [
+                    headers.map(escapeCSV).join(','),
+                    ...rows.map(row => row.map(escapeCSV).join(','))
+                ];
+
+                const csvContent = '\uFEFF' + csvRows.join('\r\n');
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                
+                const link = document.createElement('a');
+                link.setAttribute('href', url);
+                link.setAttribute('download', `pb_export_${new Date().toISOString().slice(0, 10)}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                exportExcelBtn.textContent = '已导出 ✔';
+            } catch (e) {
+                console.error('Export failed:', e);
+                exportExcelBtn.textContent = '导出失败 ❌';
+            }
+
+            setTimeout(() => {
+                exportExcelBtn.textContent = originalText;
+                exportExcelBtn.disabled = false;
+            }, 1500);
+        }, 500);
+    }
+
+    if (exportExcelBtn) {
+        exportExcelBtn.addEventListener('click', exportToExcel);
+    }
+
     if (btnPersonalBest) {
         btnPersonalBest.addEventListener('click', fetchPersonalBest);
     }
