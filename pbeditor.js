@@ -175,7 +175,7 @@
         editingItem.count = inCount.value.trim();
         editingItem.PBTime = inPBTime.value.trim();
         editingItem.PBDate = inPBDate.value.trim();
-
+        editingItem.type = 'single';
         // Send update to API (PUT)
         const endpoint = 'https://0i6hydevx6.execute-api.us-east-1.amazonaws.com/dev/personalBestTime';
         const originalText = saveBtn.textContent;
