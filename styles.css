@@ -114,10 +114,12 @@ textarea {
     display: flex;
     gap:12px;
     margin:8px 0 22px;
+    flex-wrap: wrap;
 }
 
-.btn-generate, .btn-export {
+.btn-generate, .btn-export, .btn-update-pb, .btn-cancel, .btn-confirm {
     flex:1;
+    min-width: 140px;
     height: 48px;
     border: none;
     border-radius: 50px;
@@ -135,9 +137,97 @@ textarea {
     background: linear-gradient(90deg, #10B981, #34D399);
     color: #fff;
 }
-.btn-generate:active,.btn-export:active {
+.btn-update-pb{
+    background: linear-gradient(90deg, #F59E0B, #FCD34D);
+    color: #111827;
+}
+.btn-cancel{
+    background: linear-gradient(90deg, #6B7280, #9CA3AF);
+    color: #fff;
+}
+.btn-confirm{
+    background: linear-gradient(90deg, #2563EB, #60A5FA);
+    color: #fff;
+}
+.btn-generate:active,.btn-export:active,.btn-update-pb:active,.btn-cancel:active,.btn-confirm:active {
     transform: scale(0.96);
     box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.72);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 3000;
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-content {
+    width: min(960px, 100%);
+    max-height: 85vh;
+    overflow: auto;
+    background: #fff;
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 16px 50px rgba(0,0,0,0.25);
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.modal-header h3 {
+    color: #111827;
+    font-size: 20px;
+}
+
+.modal-close {
+    border: none;
+    background: transparent;
+    font-size: 24px;
+    cursor: pointer;
+    color: #6B7280;
+}
+
+.modal-body {
+    overflow: auto;
+}
+
+.modal-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.modal-table th,
+.modal-table td {
+    padding: 8px 10px;
+    border: 1px solid #E5E7EB;
+    text-align: center;
+    background: #fff;
+    color: #111827;
+}
+
+.modal-table th {
+    background: linear-gradient(90deg, #7C3AED, #4F46E5);
+    color: #FFE66D;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 16px;
 }
 
 /* 表格优化：行圆润+行高降低+破纪录亮绿色 */

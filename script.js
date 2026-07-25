@@ -55,9 +55,23 @@ function getCurrentDateValue(){
     return new Date().toISOString().slice(0,10);
 }
 
-function updateTableHeader(){
+function getSelectedDateValue(){
     let dateInput = document.getElementById('dateInput');
-    let value = dateInput && dateInput.value ? dateInput.value : getCurrentDateValue();
+    return dateInput && dateInput.value ? dateInput.value : getCurrentDateValue();
+}
+
+function escapeHtml(value){
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    }[char]));
+}
+
+function updateTableHeader(){
+    let value = getSelectedDateValue();
     let header = document.getElementById('tableHeader');
     if(header){
         header.textContent = `${value} PB Run 成绩`;
@@ -314,11 +328,10 @@ function convertToJsonForApi(){
         alert('请先生成成绩表格！');
         return;
     }
-    
-    const updateData = buildUpdatePBData(dateValue);    
-    //create an array of objects for the API
-    const jsonData = updateData.slice(1).map(row => ({
 
+    const dateValue = getSelectedDateValue();
+    const updateData = buildUpdatePBData(dateValue);
+    const jsonData = updateData.slice(1).map(row => ({
         wexinID: row[1],
         count: row[2],
         PBTime: row[3],
@@ -326,8 +339,7 @@ function convertToJsonForApi(){
         type: row[5]
     }));
 
-    return JSON.stringify(jsonData, null, 2);
-    
+    return jsonData;
 }
 // this function will post the updated PB data to the API endpoint for updating the PB records
 async function postUpdatedPBDataToApi(){
@@ -335,26 +347,78 @@ async function postUpdatedPBDataToApi(){
     if(!jsonData){
         return;
     }
-
+    const endpoint = 'https://0i6hydevx6.execute-api.us-east-1.amazonaws.com/dev/personalBestTime';
+    const payload = {
+        body: jsonData  // jsonData is your array
+    };
     try {
-        const response = await fetch('https://0i6hydevx6.execute-api.us-east-1.amazonaws.com/dev/updatePersonalBestTime', {
-            method: 'POST',
+        const response = await fetch(endpoint, {
+            method: 'PUT',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: jsonData
+            body: JSON.stringify(payload)
         });
 
         if(!response.ok){
-            throw new Error(`HTTP ${response.status}`);
+            const errorText = await response.text().catch(() => '');
+            throw new Error(`HTTP ${response.status}${errorText ? `: ${errorText}` : ''}`);
         }
 
-        const result = await response.json();
+        const result = await response.json().catch(() => null);
         alert('PB 数据已成功更新！');
         console.log('API Response:', result);
     } catch (error) {
         console.error('更新 PB 数据失败:', error);
-        alert('更新 PB 数据失败，请稍后重试。');
+        alert('更新 PB 数据失败。请确认 API Gateway 已启用 CORS，并允许 POST/OPTIONS 请求。');
+    }
+
+}
+
+function renderUpdatePbModal(){
+    const modalBody = document.getElementById('updatePbModalBody');
+    if(!modalBody) return;
+
+    if(tableData.length === 0){
+        modalBody.innerHTML = '<p>请先生成成绩表格。</p>';
+        return;
+    }
+
+    const dateValue = getSelectedDateValue();
+    const updateData = buildUpdatePBData(dateValue);
+    const headerRow = (updateData[0] || []).slice(1);
+    const bodyRows = (updateData.slice(1) || []).map(row => row.slice(1));
+
+    const headerHtml = headerRow.map(cell => `<th>${escapeHtml(cell)}</th>`).join('');
+    const bodyHtml = bodyRows.map(row => `<tr>${row.map(cell => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('');
+
+    modalBody.innerHTML = `
+        <table class="modal-table">
+            <thead><tr>${headerHtml}</tr></thead>
+            <tbody>${bodyHtml}</tbody>
+        </table>
+    `;
+}
+
+function openUpdatePbModal(){
+    if(tableData.length === 0){
+        alert('请先生成成绩表格！');
+        return;
+    }
+
+    renderUpdatePbModal();
+    const modal = document.getElementById('updatePbModal');
+    if(modal){
+        modal.classList.remove('hidden');
+        modal.setAttribute('aria-hidden', 'false');
+    }
+}
+
+function closeUpdatePbModal(){
+    const modal = document.getElementById('updatePbModal');
+    if(modal){
+        modal.classList.add('hidden');
+        modal.setAttribute('aria-hidden', 'true');
     }
 }
 
@@ -364,8 +428,7 @@ function exportExcel(){
         return;
     }
 
-    const dateInput = document.getElementById('dateInput');
-    const dateValue = dateInput && dateInput.value ? dateInput.value : getCurrentDateValue();
+    const dateValue = getSelectedDateValue();
     const sheetData = buildUpdatePBData(dateValue);
 
     const ws = XLSX.utils.aoa_to_sheet(sheetData);
@@ -379,4 +442,34 @@ initDateInput();
 let loadPbBtn = document.getElementById('loadPbBtn');
 if(loadPbBtn){
     loadPbBtn.addEventListener('click', loadPbFromApi);
+}
+
+let updatePbBtn = document.getElementById('updatePbBtn');
+if(updatePbBtn){
+    updatePbBtn.addEventListener('click', openUpdatePbModal);
+}
+
+let confirmUpdatePbBtn = document.getElementById('confirmUpdatePbBtn');
+if(confirmUpdatePbBtn){
+    confirmUpdatePbBtn.addEventListener('click', async () => {
+        await postUpdatedPBDataToApi();
+        closeUpdatePbModal();
+    });
+}
+
+let cancelUpdatePbBtn = document.getElementById('cancelUpdatePbBtn');
+let closeUpdateModalBtn = document.getElementById('closeUpdateModalBtn');
+let updatePbModal = document.getElementById('updatePbModal');
+if(cancelUpdatePbBtn){
+    cancelUpdatePbBtn.addEventListener('click', closeUpdatePbModal);
+}
+if(closeUpdateModalBtn){
+    closeUpdateModalBtn.addEventListener('click', closeUpdatePbModal);
+}
+if(updatePbModal){
+    updatePbModal.addEventListener('click', event => {
+        if(event.target === updatePbModal){
+            closeUpdatePbModal();
+        }
+    });
 }

@@ -48,9 +48,25 @@
         </div>
 
         <div class="btn-wrap">
-            <button class="btn-generate" onclick="makeTable()">生成表格</button>
-            <button class="btn-export" onclick="exportExcel()">导出Excel</button>
+            <button class="btn-generate" type="button" onclick="makeTable()">生成表格</button>
+            <button class="btn-export" type="button" onclick="exportExcel()">导出Excel</button>
+            <button class="btn-update-pb" type="button" id="updatePbBtn">更新 PB</button>
         </div>
+
+        <div class="modal hidden" id="updatePbModal" aria-hidden="true">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>确认更新 PB 数据</h3>
+                    <button class="modal-close" type="button" id="closeUpdateModalBtn" aria-label="关闭">×</button>
+                </div>
+                <div class="modal-body" id="updatePbModalBody"></div>
+                <div class="modal-actions">
+                    <button class="btn-cancel" type="button" id="cancelUpdatePbBtn">取消</button>
+                    <button class="btn-confirm" type="button" id="confirmUpdatePbBtn">确认</button>
+                </div>
+            </div>
+        </div>
+
         <div class="table-title" id="tableHeader"></div>
         <table id="resultTable">
             <tbody id="tableBody"></tbody>
