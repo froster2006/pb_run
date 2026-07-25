@@ -122,7 +122,7 @@
         const resultDiv = document.getElementById('personalBestResult');
 
         deleteBtn.disabled = true;
-        deleteBtn.textContent = '删除中...';
+        deleteBtn.textContent = '删除中... ⏳';
 
         allItems = allItems.filter(item => String(item.wexinID ?? '').trim() !== removedKey);
         filteredItems = filteredItems.filter(item => String(item.wexinID ?? '').trim() !== removedKey);
@@ -141,8 +141,9 @@
             });
             if (!resp.ok) throw new Error('HTTP ' + resp.status);
 
-            deleteBtn.textContent = '✔ 已删除';
-            deleteBtn.style.background = 'linear-gradient(135deg,#16a34a,#15803d)';
+            deleteBtn.textContent = '已删除 ✔';
+            deleteBtn.style.background = 'rgba(34, 197, 94, 0.25)';
+            deleteBtn.style.color = '#4ade80';
         } catch (e) {
             console.error('Delete failed:', e);
             allItems = previousAllItems;
@@ -150,19 +151,22 @@
             currentPage = 0;
             applyFilter(q ? q.value : '');
             if (resultDiv) render(resultDiv);
-            deleteBtn.textContent = '删除失败';
-            deleteBtn.style.background = 'linear-gradient(135deg,#ef4444,#b91c1c)';
+            deleteBtn.textContent = '删除失败 ❌';
+            deleteBtn.style.background = 'rgba(239, 68, 68, 0.3)';
+            deleteBtn.style.color = '#fca5a5';
             setTimeout(() => {
                 deleteBtn.textContent = originalText;
                 deleteBtn.style.background = '';
+                deleteBtn.style.color = '';
                 deleteBtn.disabled = false;
             }, 1600);
             return;
         }
 
         setTimeout(() => {
-            deleteBtn.textContent = '🗑 删除';
+            deleteBtn.textContent = originalText;
             deleteBtn.style.background = '';
+            deleteBtn.style.color = '';
             deleteBtn.disabled = false;
         }, 900);
     });

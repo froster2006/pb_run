@@ -325,7 +325,6 @@ button:active {
     gap: 8px;
 }
 
-.edit-delete-btn,
 .edit-close-btn,
 .edit-save-btn {
     width: auto;
@@ -337,11 +336,6 @@ button:active {
     font-size: 13px;
     font-weight: 600;
     white-space: nowrap;
-}
-
-.edit-delete-btn {
-    background: linear-gradient(135deg, #ef4444, #dc2626);
-    box-shadow: 0 6px 16px rgba(239, 68, 68, 0.25);
 }
 
 .edit-close-btn {
@@ -357,7 +351,6 @@ button:active {
     margin-top: 16px;
 }
 
-.edit-modal-footer .edit-delete-btn,
 .edit-modal-footer .edit-save-btn {
     width: auto;
     max-width: none;
@@ -503,24 +496,58 @@ button:active {
 .edit-close-btn {
     all: unset;
     cursor: pointer;
-    width: 26px;
-    height: 26px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 50%;
-    font-size: 13px;
+    gap: 4px;
+    height: 28px;
+    padding: 0 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
     color: #94a3b8;
     background: rgba(255,255,255,0.06);
     transition: background 0.15s ease, color 0.15s ease;
     max-width: unset;
     margin-top: 0;
     box-shadow: none;
+    white-space: nowrap;
 }
 
 .edit-close-btn:hover {
     background: rgba(255,255,255,0.14);
     color: #f1f5f9;
+}
+
+.edit-delete-btn {
+    all: unset;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    height: 28px;
+    padding: 0 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #f87171;
+    background: rgba(239, 68, 68, 0.15);
+    transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+    max-width: unset;
+    margin-top: 0;
+    box-shadow: none;
+    white-space: nowrap;
+}
+
+.edit-delete-btn:hover {
+    background: rgba(239, 68, 68, 0.3);
+    color: #fca5a5;
+    transform: scale(1.02);
+}
+
+.edit-delete-btn:active {
+    transform: scale(0.98);
 }
 
 /* ── Modal body (form) ───────────────────────────── */
